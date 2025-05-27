@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:microvolunteer}
+    username: ${DB_USERNAME:microvolunteer}
+    password: ${DB_PASSWORD:password}
+
+keycloak:
+  auth-server-url: ${KEYCLOAK_URL:http://keycloak:8080}/auth
+  credentials:
+    secret: ${KEYCLOAK_CLIENT_SECRET:secret}

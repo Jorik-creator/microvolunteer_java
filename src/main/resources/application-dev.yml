@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/microvolunteer
+    username: microvolunteer
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+
+keycloak:
+  auth-server-url: http://localhost:8080/auth
+  credentials:
+    secret: secret
+
+logging:
+  level:
+    com.microvolunteer: DEBUG
+    org.springframework.security: DEBUG
+    org.keycloak: DEBUG

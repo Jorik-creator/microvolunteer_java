@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: microvolunteer
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/microvolunteer
+    username: ${DB_USERNAME:microvolunteer}
+    password: ${DB_PASSWORD:password}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+# Keycloak конфігурація
+keycloak:
+  enabled: true
+  realm: microvolunteer
+  auth-server-url: http://localhost:8080
+  ssl-required: external
+  resource: microvolunteer-backend
+  credentials:
+    secret: ${KEYCLOAK_CLIENT_SECRET:secret}
+  use-resource-role-mappings: true
+  bearer-only: true
+  autodetect-bearer-only: true
+  enable-basic-auth: false
+  public-client: false
+  confidential-port: 0
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+server:
+  port: 8081
+
+logging:
+  level:
+    com.microvolunteer: DEBUG
+    org.keycloak: DEBUG
