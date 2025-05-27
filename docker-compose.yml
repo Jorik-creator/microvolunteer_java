@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17.5
+    container_name: microvolunteer-postgres
+    environment:
+      POSTGRES_DB: microvolunteer
+      POSTGRES_USER: microvolunteer
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - microvolunteer-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.3
+    container_name: microvolunteer-keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: microvolunteer
+      KC_DB_PASSWORD: password
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    networks:
+      - microvolunteer-network
+
+  app:
+    build: docker
+    container_name: microvolunteer-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: microvolunteer
+      DB_USERNAME: microvolunteer
+      DB_PASSWORD: password
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_CLIENT_SECRET: secret
+    depends_on:
+      - postgres
+      - keycloak
+    ports:
+      - "8081:8081"
+    networks:
+      - microvolunteer-network
+
+volumes:
+  postgres_data:
+
+networks:
+  microvolunteer-network:
+    driver: bridge

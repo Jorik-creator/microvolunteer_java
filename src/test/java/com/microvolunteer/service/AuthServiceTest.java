@@ -1,4 +1,4 @@
 package com.microvolunteer.service;
 
-public class DashboardService {
+public class AuthServiceTest {
 }
