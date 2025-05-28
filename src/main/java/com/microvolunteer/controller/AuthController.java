@@ -13,10 +13,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.security.RolesAllowed;
 import java.security.Principal;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -42,7 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/sync")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Синхронізація користувача з Keycloak")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Користувач успішно синхронізований"),
@@ -56,6 +57,28 @@ public class AuthController {
         String email = keycloakUtils.getCurrentUserEmail().orElse(null);
 
         UserResponse response = authService.syncKeycloakUser(keycloakId, username, email);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/token")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Генерація JWT токена")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Токен успішно згенеровано"),
+            @ApiResponse(responseCode = "401", description = "Неавторизований доступ")
+    })
+    public ResponseEntity<Map<String, String>> generateToken(Principal principal) {
+        String keycloakId = principal.getName();
+        log.info("Генерація токена для користувача: {}", keycloakId);
+
+        String token = authService.generateToken(keycloakId);
+
+        Map<String, String> response = Map.of(
+                "access_token", token,
+                "token_type", "Bearer",
+                "expires_in", "86400"
+        );
+
         return ResponseEntity.ok(response);
     }
 }

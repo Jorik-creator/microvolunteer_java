@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/microvolunteer
+    url: jdbc:postgresql://localhost:5433/microvolunteer_dev
     username: microvolunteer
     password: password
 
@@ -14,7 +14,7 @@ spring:
     show-sql: true
 
 keycloak:
-  auth-server-url: http://localhost:8080/auth
+  auth-server-url: http://localhost:8082
   credentials:
     secret: secret
 

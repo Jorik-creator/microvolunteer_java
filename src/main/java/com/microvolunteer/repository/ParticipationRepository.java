@@ -1,8 +1,11 @@
 package com.microvolunteer.repository;
 
 import com.microvolunteer.entity.Participation;
+import com.microvolunteer.entity.Task;
+import com.microvolunteer.entity.User;
 import com.microvolunteer.enums.TaskStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,6 +18,8 @@ import java.util.Optional;
 public interface ParticipationRepository extends JpaRepository<Participation, Long> {
 
     boolean existsByTaskIdAndUserId(Long taskId, Long userId);
+    
+    boolean existsByUserAndTask(User user, Task task);
 
     Optional<Participation> findByTaskIdAndUserId(Long taskId, Long userId);
 
@@ -38,4 +43,8 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
             "ORDER BY month")
     Map<String, Long> getMonthlyActivityForUser(@Param("userId") Long userId,
                                                 @Param("fromDate") LocalDateTime fromDate);
+    
+    @Modifying
+    @Query("UPDATE Participation p SET p.isCompleted = :completed WHERE p.task.id = :taskId")
+    void updateParticipationStatus(@Param("taskId") Long taskId, @Param("completed") boolean completed);
 }

@@ -15,9 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.security.RolesAllowed;
 import java.security.Principal;
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class TaskController {
     private final TaskService taskService;
 
     @PostMapping
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Створити нове завдання")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Завдання успішно створено"),
@@ -78,7 +78,7 @@ public class TaskController {
     }
 
     @PutMapping("/{id}")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Оновити завдання")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Завдання успішно оновлено"),
@@ -98,7 +98,7 @@ public class TaskController {
     }
 
     @PostMapping("/{id}/join")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Приєднатися до завдання")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Успішно приєднано до завдання"),
@@ -116,7 +116,7 @@ public class TaskController {
     }
 
     @PostMapping("/{id}/leave")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Відмовитися від участі у завданні")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Успішно відмовлено від участі"),
@@ -134,7 +134,7 @@ public class TaskController {
     }
 
     @PostMapping("/{id}/complete")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Позначити завдання як завершене")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Завдання успішно завершено"),

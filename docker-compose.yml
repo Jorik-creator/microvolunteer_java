@@ -1,70 +1,83 @@
+# Docker Compose конфігурація для розробки
+# Використання: docker-compose -f docker-compose.dev.yml up
+
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:17.5
-    container_name: microvolunteer-postgres
+  # PostgreSQL для розробки
+  postgres-dev:
+    image: postgres:17.2-alpine
+    container_name: microvolunteer-postgres-dev
     environment:
-      POSTGRES_DB: microvolunteer
+      POSTGRES_DB: microvolunteer_dev
       POSTGRES_USER: microvolunteer
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5433:5432"  # Інший порт для розробки
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - microvolunteer-network
+      - microvolunteer-dev-network
+    restart: unless-stopped
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0.3
-    container_name: microvolunteer-keycloak
+  # Keycloak для розробки
+  keycloak-dev:
+    image: quay.io/keycloak/keycloak:26.0.7
+    container_name: microvolunteer-keycloak-dev
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_URL: jdbc:postgresql://postgres-dev:5432/keycloak
       KC_DB_USERNAME: microvolunteer
       KC_DB_PASSWORD: password
       KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: 8080
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_LOG_LEVEL: info
+      KC_HOSTNAME_PORT: 8090
+      KC_HTTP_ENABLED: true
+      KC_HTTP_PORT: 8080
+      KC_LOG_LEVEL: debug
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-    command: start-dev
+    command: ["start-dev", "--import-realm"]
     depends_on:
-      - postgres
+      - postgres-dev
     ports:
-      - "8080:8080"
+      - "8090:8080"  # Інший порт для розробки
     volumes:
-      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
-      - microvolunteer-network
+      - microvolunteer-dev-network
+    restart: unless-stopped
 
-  app:
-    build: docker
-    container_name: microvolunteer-app
+  # Adminer для управління БД
+  adminer:
+    image: adminer:4.8.1
+    container_name: microvolunteer-adminer
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: microvolunteer
-      DB_USERNAME: microvolunteer
-      DB_PASSWORD: password
-      KEYCLOAK_URL: http://keycloak:8080
-      KEYCLOAK_CLIENT_SECRET: secret
-    depends_on:
-      - postgres
-      - keycloak
+      ADMINER_DEFAULT_SERVER: postgres-dev
     ports:
-      - "8081:8081"
+      - "8082:8080"
     networks:
-      - microvolunteer-network
+      - microvolunteer-dev-network
+    restart: unless-stopped
+
+  # Redis для кешування (опціонально)
+  redis-dev:
+    image: redis:7.2-alpine
+    container_name: microvolunteer-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - microvolunteer-dev-network
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  postgres_dev_data:
+  redis_dev_data:
 
 networks:
-  microvolunteer-network:
+  microvolunteer-dev-network:
     driver: bridge

@@ -26,12 +26,13 @@ public interface TaskMapper {
     @Mapping(target = "participants", ignore = true)
     Task toEntity(TaskCreateRequest request);
 
-    @Mapping(target = "currentParticipants", expression = "java(task.getParticipants().size())")
-    @Mapping(target = "availableSpots", expression = "java(task.getAvailableSpots())")
-    @Mapping(target = "isPastDue", expression = "java(task.isPastDue())")
+    @Mapping(target = "currentVolunteers", expression = "java(task.getCurrentVolunteers())")
+    @Mapping(target = "availableSpots", expression = "java(task.getMaxVolunteers() - task.getCurrentVolunteers())")
+    @Mapping(target = "pastDue", expression = "java(task.getDeadline() != null && task.getDeadline().isBefore(java.time.LocalDateTime.now()))")
     @Mapping(target = "images", source = "images", qualifiedByName = "imagesToUrls")
     @Mapping(target = "canJoin", ignore = true)
-    @Mapping(target = "isParticipant", ignore = true)
+    @Mapping(target = "participant", ignore = true)
+    @Mapping(target = "status", expression = "java(task.getStatus().name())")
     TaskResponse toResponse(Task task);
 
     void updateEntityFromRequest(TaskCreateRequest request, @MappingTarget Task task);

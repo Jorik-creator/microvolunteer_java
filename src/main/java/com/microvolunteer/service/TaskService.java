@@ -70,7 +70,7 @@ public class TaskService {
 
         TaskResponse response = taskMapper.toResponse(savedTask);
         response.setCanJoin(false);
-        response.setIsParticipant(false);
+        response.setParticipant(false);
 
         return response;
     }
@@ -119,10 +119,10 @@ public class TaskService {
                         user.getUserType() == UserType.VOLUNTEER &&
                         !task.getCreator().getId().equals(user.getId());
 
-                response.setIsParticipant(isParticipant);
+                response.setParticipant(isParticipant);
                 response.setCanJoin(canJoin);
             } else {
-                response.setIsParticipant(false);
+                response.setParticipant(false);
                 response.setCanJoin(false);
             }
 
@@ -151,7 +151,7 @@ public class TaskService {
                         user.getUserType() == UserType.VOLUNTEER &&
                         !task.getCreator().getId().equals(user.getId());
 
-                response.setIsParticipant(isParticipant);
+                response.setParticipant(isParticipant);
                 response.setCanJoin(canJoin);
             }
         }
@@ -246,7 +246,7 @@ public class TaskService {
         log.info("Користувач {} успішно приєднався до завдання {}", user.getUsername(), task.getId());
 
         TaskResponse response = taskMapper.toResponse(task);
-        response.setIsParticipant(true);
+        response.setParticipant(true);
         response.setCanJoin(false);
 
         return response;
@@ -283,7 +283,7 @@ public class TaskService {
         log.info("Користувач {} успішно покинув завдання {}", user.getUsername(), task.getId());
 
         TaskResponse response = taskMapper.toResponse(task);
-        response.setIsParticipant(false);
+        response.setParticipant(false);
         response.setCanJoin(true);
 
         return response;
@@ -331,7 +331,7 @@ public class TaskService {
                 .map(task -> {
                     TaskResponse response = taskMapper.toResponse(task);
                     response.setCanJoin(false);
-                    response.setIsParticipant(false);
+                    response.setParticipant(false);
                     return response;
                 })
                 .collect(Collectors.toList());

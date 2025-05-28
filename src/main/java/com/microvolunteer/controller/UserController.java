@@ -10,9 +10,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.security.RolesAllowed;
 import java.security.Principal;
 import java.util.Map;
 
@@ -26,7 +26,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/profile")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Отримати профіль поточного користувача")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Профіль успішно отримано"),
@@ -67,7 +67,7 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    @RolesAllowed("user")
+    @PreAuthorize("hasRole('USER')")
     @Operation(summary = "Оновити профіль поточного користувача")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Профіль успішно оновлено"),
