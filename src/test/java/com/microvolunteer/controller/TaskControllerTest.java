@@ -48,7 +48,7 @@ class TaskControllerTest {
                 .categoryId(1L)
                 .location("Київ")
                 .startDate(LocalDateTime.now().plusDays(1))
-                .maxParticipants(1)
+                //.maxParticipants(1)
                 .build();
 
         taskResponse = TaskResponse.builder()

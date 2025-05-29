@@ -237,11 +237,14 @@ public class TaskService {
                 .build();
         participationRepository.save(participation);
 
+        // Оновлення лічильника учасників
+        task.setCurrentVolunteers(task.getCurrentVolunteers() + 1);
+
         // Оновлення статусу якщо всі місця заповнені
-        if (task.getAvailableSpots() == 1) { // було останнє місце
+        if (task.getAvailableSpots() == 0) { // всі місця заповнені
             task.setStatus(TaskStatus.IN_PROGRESS);
-            taskRepository.save(task);
         }
+        taskRepository.save(task);
 
         log.info("Користувач {} успішно приєднався до завдання {}", user.getUsername(), task.getId());
 
@@ -274,11 +277,14 @@ public class TaskService {
         // Видалення участі
         participationRepository.delete(participation);
 
+        // Оновлення лічильника учасників
+        task.setCurrentVolunteers(Math.max(0, task.getCurrentVolunteers() - 1));
+
         // Оновлення статусу якщо було в процесі
         if (task.getStatus() == TaskStatus.IN_PROGRESS) {
             task.setStatus(TaskStatus.OPEN);
-            taskRepository.save(task);
         }
+        taskRepository.save(task);
 
         log.info("Користувач {} успішно покинув завдання {}", user.getUsername(), task.getId());
 

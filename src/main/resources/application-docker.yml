@@ -3,8 +3,57 @@ spring:
     url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:microvolunteer}
     username: ${DB_USERNAME:microvolunteer}
     password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
 
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# Keycloak конфігурація для Docker
 keycloak:
-  auth-server-url: ${KEYCLOAK_URL:http://keycloak:8080}/auth
-  credentials:
-    secret: ${KEYCLOAK_CLIENT_SECRET:secret}
+  realm: microvolunteer
+  auth-server-url: ${KEYCLOAK_URL:http://keycloak:8080}
+  admin:
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
+# JWT конфігурація для Docker
+app:
+  jwt:
+    secret: ${JWT_SECRET:microvolunteer-secret-key-that-should-be-at-least-256-bits-long-for-security}
+    expiration: ${JWT_EXPIRATION:86400000}
+
+  # File upload для Docker
+  upload:
+    dir: ${UPLOAD_DIR:/app/uploads}
+
+# Логування для Docker
+logging:
+  level:
+    com.microvolunteer: ${LOG_LEVEL:INFO}
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  file:
+    name: /app/logs/application.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management endpoints для Docker
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always

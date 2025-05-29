@@ -37,8 +37,8 @@ public class TaskCreateRequest {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime endDate;
 
-    @NotNull(message = "Кількість учасників є обов'язковою")
-    @Min(value = 1, message = "Кількість учасників має бути мінімум 1")
-    @Max(value = 100, message = "Кількість учасників не може перевищувати 100")
-    private Integer maxParticipants;
+    @NotNull(message = "Кількість волонтерів є обов'язковою")
+    @Min(value = 1, message = "Кількість волонтерів має бути мінімум 1")
+    @Max(value = 100, message = "Кількість волонтерів не може перевищувати 100")
+    private Integer maxVolunteers;
 }

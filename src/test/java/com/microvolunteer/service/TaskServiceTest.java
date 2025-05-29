@@ -105,7 +105,7 @@ class TaskServiceTest {
                 .location("Київ")
                 .startDate(LocalDateTime.now().plusDays(1))
                 .endDate(LocalDateTime.now().plusDays(1).plusHours(2))
-                .maxParticipants(3)
+                //.maxParticipants(3)
                 .build();
 
         testTaskResponse = TaskResponse.builder()

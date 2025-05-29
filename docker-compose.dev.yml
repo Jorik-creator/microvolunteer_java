@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL для розробки
-  postgres-dev:
-    image: postgres:17-alpine
+  microvolunteer-postgres-dev:
+    image: postgres:16-alpine
     container_name: microvolunteer-postgres-dev
     environment:
       POSTGRES_DB: microvolunteer_dev
@@ -12,19 +10,19 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - microvolunteer_postgres_dev_data:/var/lib/postgresql/data
     networks:
       - microvolunteer-dev-network
 
   # Keycloak для розробки
-  keycloak-dev:
-    image: quay.io/keycloak/keycloak:23.0.4
+  microvolunteer-keycloak-dev:
+    image: quay.io/keycloak/keycloak:26.0.7
     container_name: microvolunteer-keycloak-dev
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-postgres-dev:5432/keycloak_dev
+      KC_DB_URL: jdbc:postgresql://microvolunteer-keycloak-postgres-dev:5432/keycloak_dev
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
       KC_HOSTNAME_STRICT: false
@@ -33,26 +31,26 @@ services:
     ports:
       - "8082:8080"
     depends_on:
-      - keycloak-postgres-dev
+      - microvolunteer-keycloak-postgres-dev
     networks:
       - microvolunteer-dev-network
     command: start-dev
 
   # Keycloak Database для розробки
-  keycloak-postgres-dev:
+  microvolunteer-keycloak-postgres-dev:
     image: postgres:16-alpine
-    container_name: keycloak-postgres-dev
+    container_name: microvolunteer-keycloak-postgres-dev
     environment:
       POSTGRES_DB: keycloak_dev
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: keycloak
     volumes:
-      - keycloak_postgres_dev_data:/var/lib/postgresql/data
+      - microvolunteer_keycloak_postgres_dev_data:/var/lib/postgresql/data
     networks:
       - microvolunteer-dev-network
 
   # Redis для кешування (опційно)
-  redis-dev:
+  microvolunteer-redis-dev:
     image: redis:7-alpine
     container_name: microvolunteer-redis-dev
     ports:
@@ -61,8 +59,8 @@ services:
       - microvolunteer-dev-network
 
 volumes:
-  postgres_dev_data:
-  keycloak_postgres_dev_data:
+  microvolunteer_postgres_dev_data:
+  microvolunteer_keycloak_postgres_dev_data:
 
 networks:
   microvolunteer-dev-network:

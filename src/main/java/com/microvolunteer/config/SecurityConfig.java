@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         // Публічні endpoint-и
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
-                        .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/register", "/api/auth/token").permitAll()
                         .requestMatchers("/api/categories/**").permitAll()
                         .requestMatchers("/api/tasks/list", "/api/tasks/*/", "/api/tasks/recent").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
