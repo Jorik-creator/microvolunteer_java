@@ -23,14 +23,16 @@ public class TaskResponse {
     private String location;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
-    private Integer maxParticipants;
-    private Integer currentParticipants;
+    private LocalDateTime deadline;
+    private Integer duration;
+    private Integer maxVolunteers;
+    private Integer currentVolunteers;
     private Integer availableSpots;
-    private TaskStatus status;
+    private String status;
     private List<String> images;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private boolean isPastDue;
-    private boolean canJoin;
-    private boolean isParticipant;
+    private Boolean pastDue;
+    private Boolean canJoin;
+    private Boolean participant;
 }

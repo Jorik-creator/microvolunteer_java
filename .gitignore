@@ -95,9 +95,20 @@ ehthumbs.db
 Desktop.ini
 
 ### Project Specific ###
+# Environment variables
+.env
+.env.local
+.env.prod
+
 # Uploaded files and images
 uploads/
 /media/
+microvolunteer-uploads/
+
+# Logs
+logs/
+*.log
+microvolunteer-*.log
 
 # Docker
 .docker/data/

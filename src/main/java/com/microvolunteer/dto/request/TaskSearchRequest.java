@@ -25,6 +25,9 @@ public class TaskSearchRequest {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate dateTo;
 
+    @Builder.Default
     private Integer page = 0;
+    
+    @Builder.Default
     private Integer size = 12;
 }

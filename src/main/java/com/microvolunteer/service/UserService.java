@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -92,8 +93,16 @@ public class UserService {
             statistics.put("cancelledTasks", cancelledTasks);
             statistics.put("totalVolunteersHelped", totalVolunteersHelped);
 
-            // Статистика за категоріями
-            Map<String, Long> tasksByCategory = taskRepository.countTasksByCategoryForUser(userId);
+            // Статистика за категоріями - конвертуємо List<Object[]> в Map
+            List<Object[]> categoryResults = taskRepository.findTasksByCategoryForUser(userId);
+            Map<String, Long> tasksByCategory = new HashMap<>();
+
+            for (Object[] result : categoryResults) {
+                String categoryName = (String) result[0];
+                Long count = ((Number) result[1]).longValue();
+                tasksByCategory.put(categoryName, count);
+            }
+
             statistics.put("tasksByCategory", tasksByCategory);
         }
 

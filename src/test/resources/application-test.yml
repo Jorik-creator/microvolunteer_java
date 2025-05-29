@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  # Вимкнення безпеки для тестів
+  security:
+    enabled: false
+
+# Тестова конфігурація
+keycloak:
+  realm: test-realm
+  auth-server-url: http://localhost:8080
+  admin:
+    username: test-admin
+    password: test-password
+
+app:
+  jwt:
+    secret: test-secret-key-for-jwt-that-is-at-least-256-bits-long-for-testing
+    expiration: 3600000 # 1 година
+  upload:
+    dir: test-uploads
+
+# Логування для тестів
+logging:
+  level:
+    com.microvolunteer: DEBUG
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate: WARN

@@ -24,6 +24,8 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     long countByStatus(TaskStatus status);
 
+    long countByCreatorId(Long creatorId);
+
     long countByCreatorIdAndStatus(Long creatorId, TaskStatus status);
 
     @Query("SELECT t FROM Task t WHERE " +
@@ -40,4 +42,10 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
                            @Param("dateFrom") LocalDateTime dateFrom,
                            @Param("dateTo") LocalDateTime dateTo,
                            Pageable pageable);
+
+    @Query("SELECT c.name as category, COUNT(t) as count " +
+            "FROM Task t JOIN t.category c " +
+            "WHERE t.creator.id = :userId " +
+            "GROUP BY c.name")
+    List<Object[]> findTasksByCategoryForUser(@Param("userId") Long userId);
 }

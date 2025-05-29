@@ -48,15 +48,15 @@ class TaskControllerTest {
                 .categoryId(1L)
                 .location("Київ")
                 .startDate(LocalDateTime.now().plusDays(1))
-                .maxParticipants(1)
+                //.maxParticipants(1)
                 .build();
 
         taskResponse = TaskResponse.builder()
                 .id(1L)
                 .title("Потрібна допомога з покупками")
-                .status(TaskStatus.OPEN)
-                .maxParticipants(1)
-                .currentParticipants(0)
+                .status(TaskStatus.OPEN.name())
+                .maxVolunteers(1)
+                .currentVolunteers(0)
                 .availableSpots(1)
                 .build();
     }

@@ -54,9 +54,19 @@ public class Task {
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
-    @Column(name = "max_participants")
+    @Column(name = "deadline")
+    private LocalDateTime deadline;
+
+    @Column(name = "duration")
+    private Integer duration;
+
+    @Column(name = "max_volunteers")
     @Builder.Default
-    private Integer maxParticipants = 1;
+    private Integer maxVolunteers = 1;
+
+    @Column(name = "current_volunteers")
+    @Builder.Default
+    private Integer currentVolunteers = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -72,10 +82,10 @@ public class Task {
     private Set<Participation> participants = new HashSet<>();
 
     public boolean isPastDue() {
-        return LocalDateTime.now().isAfter(startDate);
+        return deadline != null && LocalDateTime.now().isAfter(deadline);
     }
 
     public int getAvailableSpots() {
-        return Math.max(0, maxParticipants - participants.size());
+        return Math.max(0, maxVolunteers - currentVolunteers);
     }
 }
