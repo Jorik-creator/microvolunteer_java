@@ -54,9 +54,9 @@ class TaskControllerTest {
         taskResponse = TaskResponse.builder()
                 .id(1L)
                 .title("Потрібна допомога з покупками")
-                .status(TaskStatus.OPEN)
-                .maxParticipants(1)
-                .currentParticipants(0)
+                .status(TaskStatus.OPEN.name())
+                .maxVolunteers(1)
+                .currentVolunteers(0)
                 .availableSpots(1)
                 .build();
     }

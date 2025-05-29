@@ -132,6 +132,12 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Jakarta WS-RS API -->
+		<dependency>
+			<groupId>jakarta.ws.rs</groupId>
+			<artifactId>jakarta.ws.rs-api</artifactId>
+		</dependency>
+
 		<!-- H2 for tests -->
 		<dependency>
 			<groupId>com.h2database</groupId>

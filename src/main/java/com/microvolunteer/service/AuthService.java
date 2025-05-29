@@ -129,13 +129,19 @@ public class AuthService {
             user.setCredentials(Collections.singletonList(credential));
 
             // Створення користувача
-            var response = keycloak.realm(realm).users().create(user);
-
-            if (response.getStatus() == 201) {
-                String location = response.getLocation().getPath();
-                return location.substring(location.lastIndexOf('/') + 1);
-            } else {
-                throw new RuntimeException("Помилка створення користувача в Keycloak: " + response.getStatus());
+            try {
+                keycloak.realm(realm).users().create(user);
+                
+                // Отримання ID створеного користувача через пошук
+                var users = keycloak.realm(realm).users().searchByUsername(request.getUsername(), true);
+                if (!users.isEmpty()) {
+                    return users.get(0).getId();
+                } else {
+                    throw new RuntimeException("Користувача створено, але не вдалося знайти його ID");
+                }
+            } catch (Exception e) {
+                log.error("Помилка при створенні користувача в Keycloak: {}", e.getMessage());
+                throw new RuntimeException("Помилка створення користувача в Keycloak: " + e.getMessage());
             }
 
         } catch (Exception e) {
