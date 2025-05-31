@@ -17,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -40,20 +41,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             final String jwt = authHeader.substring(7);
-            final String keycloakId = jwtService.extractKeycloakId(jwt);
-
-            if (keycloakId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                if (jwtService.isTokenValid(jwt)) {
-                    List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+            
+            if (jwtService.isTokenValid(jwt)) {
+                // Витягуємо інформацію з Keycloak токена
+                final String keycloakId = jwtService.extractKeycloakId(jwt);
+                final List<String> roles = jwtService.extractRoles(jwt);
+                
+                if (keycloakId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    
+                    // Конвертуємо ролі в Spring Security authorities
+                    List<SimpleGrantedAuthority> authorities = roles.stream()
+                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+                            .collect(Collectors.toList());
+                    
+                    // Якщо немає ролей, додаємо базову роль USER
+                    if (authorities.isEmpty()) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                    }
 
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             keycloakId, null, authorities);
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    
+                    log.debug("Аутентифіковано користувача {} з ролями: {}", keycloakId, roles);
                 }
             }
         } catch (Exception e) {
-            log.error("Cannot set user authentication: {}", e.getMessage());
+            log.error("Помилка аутентифікації JWT токена: {}", e.getMessage());
+            // Не встановлюємо аутентифікацію при помилці
         }
 
         filterChain.doFilter(request, response);

@@ -42,9 +42,10 @@ public class TaskController {
     public ResponseEntity<TaskResponse> createTask(
             Principal principal,
             @Valid @RequestBody TaskCreateRequest request) {
-        String keycloakId = principal.getName();
-        log.info("Створення нового завдання користувачем: {}", keycloakId);
-        TaskResponse response = taskService.createTask(keycloakId, request);
+        // Отримаємо keycloakId або username залежно від типу автентифікації
+        String identifier = principal.getName();
+        log.info("Створення нового завдання користувачем: {}", identifier);
+        TaskResponse response = taskService.createTask(identifier, request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 

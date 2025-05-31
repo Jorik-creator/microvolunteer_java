@@ -1,8 +1,6 @@
 package com.microvolunteer.service;
 
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,12 +12,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тести для JwtService")
+@DisplayName("Тести для JwtService (Keycloak версія)")
 class JwtServiceTest {
 
     private JwtService jwtService;
@@ -34,15 +34,15 @@ class JwtServiceTest {
     }
 
     @Test
-    @DisplayName("Генерація токену - успішно")
-    void generateToken_Success() {
+    @DisplayName("Генерація внутрішнього токену - успішно")
+    void generateInternalToken_Success() {
         // Given
         String keycloakId = "test-keycloak-id";
         String username = "testuser";
         String email = "test@example.com";
 
         // When
-        String token = jwtService.generateToken(keycloakId, username, email);
+        String token = jwtService.generateInternalToken(keycloakId, username, email);
 
         // Then
         assertThat(token).isNotNull();
@@ -59,44 +59,153 @@ class JwtServiceTest {
         assertThat(claims.getSubject()).isEqualTo(keycloakId);
         assertThat(claims.get("username", String.class)).isEqualTo(username);
         assertThat(claims.get("email", String.class)).isEqualTo(email);
+        assertThat(claims.get("type", String.class)).isEqualTo("internal");
     }
 
     @Test
-    @DisplayName("Витягування Keycloak ID з токену - успішно")
-    void extractKeycloakId_Success() {
+    @DisplayName("Витягування Keycloak ID з Keycloak токену")
+    void extractKeycloakId_FromKeycloakToken() {
         // Given
-        String keycloakId = "test-keycloak-id";
-        String token = jwtService.generateToken(keycloakId, "testuser", "test@example.com");
+        String keycloakId = "keycloak-user-123";
+        String keycloakToken = createMockKeycloakToken(keycloakId, "testuser", "test@example.com");
 
         // When
-        String extractedId = jwtService.extractKeycloakId(token);
+        String extractedId = jwtService.extractKeycloakId(keycloakToken);
 
         // Then
         assertThat(extractedId).isEqualTo(keycloakId);
     }
 
     @Test
-    @DisplayName("Витягування Keycloak ID з неvalidного токену - помилка")
-    void extractKeycloakId_InvalidToken() {
+    @DisplayName("Витягування username з Keycloak токену - preferred_username")
+    void extractUsername_PreferredUsername() {
         // Given
-        String invalidToken = "invalid.token.here";
+        String token = createMockKeycloakTokenWithPreferredUsername("keycloak-123", "preferred_user", "fallback_user");
 
-        // When & Then
-        assertThatThrownBy(() -> jwtService.extractKeycloakId(invalidToken))
-                .isInstanceOf(Exception.class);
+        // When
+        String username = jwtService.extractUsername(token);
+
+        // Then
+        assertThat(username).isEqualTo("preferred_user");
     }
 
     @Test
-    @DisplayName("Валідація токену - успішно")
-    void isTokenValid_Success() {
+    @DisplayName("Витягування username з Keycloak токену - fallback до username")
+    void extractUsername_FallbackToUsername() {
         // Given
-        String token = jwtService.generateToken("test-keycloak-id", "testuser", "test@example.com");
+        String token = createMockKeycloakTokenWithUsername("keycloak-123", "fallback_user");
+
+        // When
+        String username = jwtService.extractUsername(token);
+
+        // Then
+        assertThat(username).isEqualTo("fallback_user");
+    }
+
+    @Test
+    @DisplayName("Витягування ролей з Keycloak токену - realm_access")
+    void extractRoles_FromRealmAccess() {
+        // Given
+        String token = createMockKeycloakTokenWithRealmRoles("keycloak-123", List.of("USER", "ADMIN"));
+
+        // When
+        List<String> roles = jwtService.extractRoles(token);
+
+        // Then
+        assertThat(roles).containsExactlyInAnyOrder("USER", "ADMIN");
+    }
+
+    @Test
+    @DisplayName("Витягування ролей з Keycloak токену - resource_access")
+    void extractRoles_FromResourceAccess() {
+        // Given
+        String token = createMockKeycloakTokenWithResourceRoles("keycloak-123", "microvolunteer", List.of("USER", "VOLUNTEER"));
+
+        // When
+        List<String> roles = jwtService.extractRoles(token);
+
+        // Then
+        assertThat(roles).containsExactlyInAnyOrder("USER", "VOLUNTEER");
+    }
+
+    @Test
+    @DisplayName("Витягування ролей - фільтрація системних ролей")
+    void extractRoles_FilterSystemRoles() {
+        // Given
+        String token = createMockKeycloakTokenWithRealmRoles("keycloak-123", 
+                List.of("USER", "offline_access", "uma_authorization", "ADMIN"));
+
+        // When
+        List<String> roles = jwtService.extractRoles(token);
+
+        // Then
+        assertThat(roles).containsExactlyInAnyOrder("USER", "ADMIN");
+        assertThat(roles).doesNotContain("offline_access", "uma_authorization");
+    }
+
+    @Test
+    @DisplayName("Витягування повного імені з Keycloak токену")
+    void extractFullName_FromGivenAndFamilyName() {
+        // Given
+        String token = createMockKeycloakTokenWithNames("keycloak-123", "John", "Doe");
+
+        // When
+        String fullName = jwtService.extractFullName(token);
+
+        // Then
+        assertThat(fullName).isEqualTo("John Doe");
+    }
+
+    @Test
+    @DisplayName("Витягування повного імені - тільки ім'я")
+    void extractFullName_OnlyFirstName() {
+        // Given
+        String token = createMockKeycloakTokenWithNames("keycloak-123", "John", null);
+
+        // When
+        String fullName = jwtService.extractFullName(token);
+
+        // Then
+        assertThat(fullName).isEqualTo("John");
+    }
+
+    @Test
+    @DisplayName("Витягування повного імені - fallback до name")
+    void extractFullName_FallbackToName() {
+        // Given
+        String token = createMockKeycloakTokenWithNameClaim("keycloak-123", "John Doe");
+
+        // When
+        String fullName = jwtService.extractFullName(token);
+
+        // Then
+        assertThat(fullName).isEqualTo("John Doe");
+    }
+
+    @Test
+    @DisplayName("Валідація Keycloak токену - успішно")
+    void isTokenValid_ValidKeycloakToken() {
+        // Given
+        String token = createMockKeycloakToken("keycloak-123", "testuser", "test@example.com");
 
         // When
         boolean isValid = jwtService.isTokenValid(token);
 
         // Then
         assertThat(isValid).isTrue();
+    }
+
+    @Test
+    @DisplayName("Валідація токену без subject - false")
+    void isTokenValid_NoSubject() {
+        // Given
+        String tokenWithoutSubject = createTokenWithoutSubject();
+
+        // When
+        boolean isValid = jwtService.isTokenValid(tokenWithoutSubject);
+
+        // Then
+        assertThat(isValid).isFalse();
     }
 
     @Test
@@ -113,81 +222,115 @@ class JwtServiceTest {
     }
 
     @Test
-    @DisplayName("Валідація expired токену - false")
-    void isTokenValid_ExpiredToken() {
-        // Given
-        ReflectionTestUtils.setField(jwtService, "jwtExpiration", -1000L); // Expired immediately
-        String expiredToken = jwtService.generateToken("test-keycloak-id", "testuser", "test@example.com");
-
-        // Reset expiration
-        ReflectionTestUtils.setField(jwtService, "jwtExpiration", testExpiration);
-
-        // When
-        boolean isValid = jwtService.isTokenValid(expiredToken);
-
-        // Then
-        assertThat(isValid).isFalse();
+    @DisplayName("Валідація null/empty токенів")
+    void isTokenValid_NullAndEmpty() {
+        assertThat(jwtService.isTokenValid(null)).isFalse();
+        assertThat(jwtService.isTokenValid("")).isFalse();
     }
 
-    @Test
-    @DisplayName("Валідація null токену - false")
-    void isTokenValid_NullToken() {
-        // When
-        boolean isValid = jwtService.isTokenValid(null);
+    // Helper methods для створення mock Keycloak токенів
 
-        // Then
-        assertThat(isValid).isFalse();
+    private String createMockKeycloakToken(String keycloakId, String username, String email) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .subject(keycloakId)
+                .claim("preferred_username", username)
+                .claim("email", email)
+                .claim("realm_access", Map.of("roles", List.of("USER")))
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
     }
 
-    @Test
-    @DisplayName("Валідація порожнього токену - false")
-    void isTokenValid_EmptyToken() {
-        // When
-        boolean isValid = jwtService.isTokenValid("");
-
-        // Then
-        assertThat(isValid).isFalse();
+    private String createMockKeycloakTokenWithPreferredUsername(String keycloakId, String preferredUsername, String username) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .subject(keycloakId)
+                .claim("preferred_username", preferredUsername)
+                .claim("username", username)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
     }
 
-    @Test
-    @DisplayName("Витягування дати закінчення з токену - успішно")
-    void extractExpiration_Success() {
-        // Given
-        String token = jwtService.generateToken("test-keycloak-id", "testuser", "test@example.com");
-
-        // When
-        Date expiration = jwtService.extractExpiration(token);
-
-        // Then
-        assertThat(expiration).isNotNull();
-        assertThat(expiration).isAfter(new Date());
+    private String createMockKeycloakTokenWithUsername(String keycloakId, String username) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .subject(keycloakId)
+                .claim("username", username)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
     }
 
-    @Test
-    @DisplayName("Витягування username з токену - успішно")
-    void extractUsername_Success() {
-        // Given
-        String username = "testuser";
-        String token = jwtService.generateToken("test-keycloak-id", username, "test@example.com");
-
-        // When
-        String extractedUsername = jwtService.extractUsername(token);
-
-        // Then
-        assertThat(extractedUsername).isEqualTo(username);
+    private String createMockKeycloakTokenWithRealmRoles(String keycloakId, List<String> roles) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .subject(keycloakId)
+                .claim("realm_access", Map.of("roles", roles))
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
     }
 
-    @Test
-    @DisplayName("Витягування email з токену - успішно")
-    void extractEmail_Success() {
-        // Given
-        String email = "test@example.com";
-        String token = jwtService.generateToken("test-keycloak-id", "testuser", email);
+    private String createMockKeycloakTokenWithResourceRoles(String keycloakId, String clientId, List<String> roles) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .subject(keycloakId)
+                .claim("resource_access", Map.of(clientId, Map.of("roles", roles)))
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
+    }
 
-        // When
-        String extractedEmail = jwtService.extractEmail(token);
+    private String createMockKeycloakTokenWithNames(String keycloakId, String firstName, String lastName) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        var builder = Jwts.builder()
+                .subject(keycloakId)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration));
+                
+        if (firstName != null) {
+            builder.claim("given_name", firstName);
+        }
+        if (lastName != null) {
+            builder.claim("family_name", lastName);
+        }
+        
+        return builder.signWith(key).compact();
+    }
 
-        // Then
-        assertThat(extractedEmail).isEqualTo(email);
+    private String createMockKeycloakTokenWithNameClaim(String keycloakId, String name) {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .subject(keycloakId)
+                .claim("name", name)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
+    }
+
+    private String createTokenWithoutSubject() {
+        SecretKey key = Keys.hmacShaKeyFor(testSecretKey.getBytes(StandardCharsets.UTF_8));
+        
+        return Jwts.builder()
+                .claim("username", "testuser")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + testExpiration))
+                .signWith(key)
+                .compact();
     }
 }

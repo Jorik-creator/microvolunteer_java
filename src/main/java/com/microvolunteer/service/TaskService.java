@@ -38,13 +38,25 @@ public class TaskService {
     private final CategoryRepository categoryRepository;
     private final ParticipationRepository participationRepository;
     private final TaskMapper taskMapper;
+    
+    // Універсальний метод для пошуку користувача
+    private User findUserByIdentifier(String identifier) {
+        return userRepository.findByKeycloakId(identifier)
+                .orElse(userRepository.findByUsername(identifier)
+                        .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено")));
+    }
+    
+    private User findUserByIdentifierOptional(String identifier) {
+        if (identifier == null) return null;
+        return userRepository.findByKeycloakId(identifier)
+                .orElse(userRepository.findByUsername(identifier).orElse(null));
+    }
 
     @Transactional
-    public TaskResponse createTask(String keycloakId, TaskCreateRequest request) {
-        log.info("Створення нового завдання користувачем: {}", keycloakId);
+    public TaskResponse createTask(String identifier, TaskCreateRequest request) {
+        log.info("Створення нового завдання користувачем: {}", identifier);
 
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
+        User user = findUserByIdentifier(identifier);
 
         // Перевірка типу користувача
         if (user.getUserType() != UserType.VULNERABLE) {
@@ -76,7 +88,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TaskResponse> searchTasks(TaskSearchRequest request, String keycloakId) {
+    public Page<TaskResponse> searchTasks(TaskSearchRequest request, String identifier) {
         log.info("Пошук завдань з параметрами: {}", request);
 
         Pageable pageable = PageRequest.of(
@@ -99,10 +111,7 @@ public class TaskService {
                 pageable
         );
 
-        User currentUser = null;
-        if (keycloakId != null) {
-            currentUser = userRepository.findByKeycloakId(keycloakId).orElse(null);
-        }
+        User currentUser = findUserByIdentifierOptional(identifier);
 
         final User user = currentUser;
 
@@ -131,7 +140,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public TaskResponse getTaskById(Long taskId, String keycloakId) {
+    public TaskResponse getTaskById(Long taskId, String identifier) {
         log.info("Отримання завдання з ID: {}", taskId);
 
         Task task = taskRepository.findById(taskId)
@@ -139,8 +148,8 @@ public class TaskService {
 
         TaskResponse response = taskMapper.toResponse(task);
 
-        if (keycloakId != null) {
-            User user = userRepository.findByKeycloakId(keycloakId).orElse(null);
+        if (identifier != null) {
+            User user = findUserByIdentifierOptional(identifier);
             if (user != null) {
                 boolean isParticipant = participationRepository
                         .existsByTaskIdAndUserId(task.getId(), user.getId());

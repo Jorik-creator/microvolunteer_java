@@ -8,8 +8,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -34,16 +32,24 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                
                 .authorizeHttpRequests(authz -> authz
                         // Публічні endpoint-и
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
-                        .requestMatchers("/api/auth/register", "/api/auth/token").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
+                        .requestMatchers("/api/auth/sync", "/api/auth/token").permitAll()
                         .requestMatchers("/api/categories/**").permitAll()
                         .requestMatchers("/api/tasks/list", "/api/tasks/*/", "/api/tasks/recent").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        
+                        // Захищені endpoints - потребують Keycloak JWT
+                        .requestMatchers("/api/tasks").authenticated() // POST /api/tasks
+                        .requestMatchers("/api/tasks/*/join", "/api/tasks/*/leave", "/api/tasks/*/complete").authenticated()
+                        .requestMatchers("/api/users/**").authenticated()
+                        
                         // Всі інші вимагають автентифікації
                         .anyRequest().authenticated()
                 )
+                // JWT filter для роботи з Keycloak токенами
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -60,10 +66,5 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
         return source;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }

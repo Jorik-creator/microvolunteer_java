@@ -1,17 +1,14 @@
 package com.microvolunteer.controller;
 
 import com.microvolunteer.config.KeycloakUtils;
-import com.microvolunteer.dto.request.UserRegistrationRequest;
 import com.microvolunteer.dto.response.UserResponse;
 import com.microvolunteer.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -23,24 +20,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Аутентифікація", description = "API для реєстрації та синхронізації користувачів")
+@Tag(name = "Аутентифікація", description = "API для синхронізації користувачів з Keycloak")
 public class AuthController {
 
     private final AuthService authService;
     private final KeycloakUtils keycloakUtils;
-
-    @PostMapping("/register")
-    @Operation(summary = "Реєстрація нового користувача")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Користувач успішно зареєстрований"),
-            @ApiResponse(responseCode = "400", description = "Невалідні дані"),
-            @ApiResponse(responseCode = "409", description = "Користувач вже існує")
-    })
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody UserRegistrationRequest request) {
-        log.info("Реєстрація нового користувача: {}", request.getUsername());
-        UserResponse response = authService.register(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
 
     @PostMapping("/sync")
     @PreAuthorize("hasRole('USER')")
@@ -53,6 +37,7 @@ public class AuthController {
         String keycloakId = principal.getName();
         log.info("Синхронізація користувача з Keycloak ID: {}", keycloakId);
 
+        // Отримуємо додаткову інформацію з токена через KeycloakUtils
         String username = keycloakUtils.getCurrentUsername().orElse(null);
         String email = keycloakUtils.getCurrentUserEmail().orElse(null);
 
@@ -60,25 +45,79 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/sync-full")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Повна синхронізація користувача з JWT токена")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Користувач успішно синхронізований"),
+            @ApiResponse(responseCode = "401", description = "Неавторизований доступ"),
+            @ApiResponse(responseCode = "400", description = "Помилка обробки токена")
+    })
+    public ResponseEntity<UserResponse> syncUserFull(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String jwtToken = authHeader.substring(7);
+            log.info("Повна синхронізація користувача з JWT токена");
+            
+            UserResponse response = authService.syncFromJwtToken(jwtToken);
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PostMapping("/token")
     @PreAuthorize("hasRole('USER')")
-    @Operation(summary = "Генерація JWT токена")
+    @Operation(summary = "Генерація внутрішнього JWT токена")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Токен успішно згенеровано"),
             @ApiResponse(responseCode = "401", description = "Неавторизований доступ")
     })
-    public ResponseEntity<Map<String, String>> generateToken(Principal principal) {
+    public ResponseEntity<Map<String, String>> generateInternalToken(Principal principal) {
         String keycloakId = principal.getName();
-        log.info("Генерація токена для користувача: {}", keycloakId);
+        log.info("Генерація внутрішнього токена для користувача: {}", keycloakId);
 
-        String token = authService.generateToken(keycloakId);
+        String token = authService.generateInternalToken(keycloakId);
 
         Map<String, String> response = Map.of(
                 "access_token", token,
                 "token_type", "Bearer",
-                "expires_in", "86400"
+                "expires_in", "86400",
+                "note", "Internal token for service integration"
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Отримати інформацію про поточного користувача")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Інформацію отримано"),
+            @ApiResponse(responseCode = "401", description = "Неавторизований доступ"),
+            @ApiResponse(responseCode = "404", description = "Користувача не знайдено")
+    })
+    public ResponseEntity<UserResponse> getCurrentUser(Principal principal) {
+        String keycloakId = principal.getName();
+        log.info("Отримання інформації про користувача: {}", keycloakId);
+
+        UserResponse response = authService.getUserByKeycloakId(keycloakId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/user-info")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Отримати повну інформацію з Keycloak токена")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Інформацію отримано"),
+            @ApiResponse(responseCode = "401", description = "Неавторизований доступ")
+    })
+    public ResponseEntity<Map<String, Object>> getKeycloakUserInfo() {
+        Map<String, Object> userInfo = Map.of(
+                "keycloak_id", keycloakUtils.getCurrentUserKeycloakId().orElse("unknown"),
+                "username", keycloakUtils.getCurrentUsername().orElse("unknown"),
+                "email", keycloakUtils.getCurrentUserEmail().orElse("unknown")
+        );
+
+        return ResponseEntity.ok(userInfo);
     }
 }
