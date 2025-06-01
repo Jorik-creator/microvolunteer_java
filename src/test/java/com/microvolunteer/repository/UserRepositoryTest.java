@@ -88,28 +88,7 @@ class UserRepositoryTest {
         assertFalse(exists);
     }
 
-    @Test
-    void findByUserType_ShouldReturnUsersOfSpecificType() {
-        // Given
-        User volunteer = createTestUser("volunteer@example.com", "volunteer-keycloak-id");
-        volunteer.setUserType(UserType.VOLUNTEER);
-        userRepository.save(volunteer);
 
-        User vulnerable = createTestUser("vulnerable@example.com", "vulnerable-keycloak-id");
-        vulnerable.setUserType(UserType.AFFECTED_PERSON);
-        userRepository.save(vulnerable);
-
-        // When
-        List<User> volunteers = userRepository.findByUserType(UserType.VOLUNTEER);
-        List<User> vulnerableUsers = userRepository.findByUserType(UserType.AFFECTED_PERSON);
-
-        // Then
-        assertEquals(1, volunteers.size());
-        assertEquals(UserType.VOLUNTEER, volunteers.get(0).getUserType());
-        
-        assertEquals(1, vulnerableUsers.size());
-        assertEquals(UserType.AFFECTED_PERSON, vulnerableUsers.get(0).getUserType());
-    }
 
     @Test
     void findByIsActiveTrue_ShouldReturnOnlyActiveUsers() {

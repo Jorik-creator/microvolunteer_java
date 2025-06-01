@@ -39,12 +39,7 @@ public class CategoryService {
                 .orElseThrow(() -> new BusinessException("Category not found with id: " + id));
     }
 
-    // Додано метод для отримання Category entity за ID
-    public Category getCategoryEntityById(Long id) {
-        log.info("Fetching category entity with ID: {}", id);
-        return categoryRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Category not found with id: " + id));
-    }
+
 
     public List<CategoryResponse> getActiveCategories() {
         log.info("Fetching active categories");
@@ -55,10 +50,10 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse createCategory(Category category) {
-        log.info("Creating new category: {}", category.getName());
+    public CategoryResponse createCategory(com.microvolunteer.dto.request.CategoryCreateRequest request) {
+        log.info("Creating new category from request: {}", request.getName());
         
-        // Валідації
+        Category category = categoryMapper.toEntity(request);
         validateCategoryCreation(category);
         
         category.setIsActive(true);
@@ -70,28 +65,12 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse createCategory(com.microvolunteer.dto.request.CategoryCreateRequest request) {
-        log.info("Creating new category from request: {}", request.getName());
-        
-        Category category = categoryMapper.toEntity(request);
-        return createCategory(category);
-    }
-
-    @Transactional
     public CategoryResponse updateCategory(Long id, com.microvolunteer.dto.request.CategoryCreateRequest request) {
         log.info("Updating category with ID: {} from request", id);
         
-        Category updatedCategory = categoryMapper.toEntity(request);
-        return updateCategory(id, updatedCategory)
-                .orElseThrow(() -> new BusinessException("Category not found with id: " + id));
-    }
-
-    @Transactional
-    public Optional<CategoryResponse> updateCategory(Long id, Category updatedCategory) {
-        log.info("Updating category with ID: {}", id);
-        
         return categoryRepository.findById(id)
                 .map(category -> {
+                    Category updatedCategory = categoryMapper.toEntity(request);
                     validateCategoryUpdate(category, updatedCategory);
                     
                     if (updatedCategory.getName() != null) {
@@ -104,7 +83,8 @@ public class CategoryService {
                     category.setUpdatedAt(LocalDateTime.now());
                     Category savedCategory = categoryRepository.save(category);
                     return categoryMapper.toResponse(savedCategory);
-                });
+                })
+                .orElseThrow(() -> new BusinessException("Category not found with id: " + id));
     }
 
     @Transactional
@@ -139,7 +119,6 @@ public class CategoryService {
                 .orElse(false);
     }
 
-    // Валідації
     private void validateCategoryCreation(Category category) {
         if (category.getName() == null || category.getName().trim().isEmpty()) {
             throw new BusinessException("Category name cannot be empty");
@@ -173,7 +152,6 @@ public class CategoryService {
     }
 
     private void validateCategoryDeletion(Category category) {
-        // Перевірити чи немає завдань в цій категорії
         List<com.microvolunteer.entity.Task> tasks = taskRepository.findByCategoryId(category.getId());
         if (!tasks.isEmpty()) {
             throw new BusinessException("Cannot delete category that has tasks");

@@ -87,8 +87,8 @@ class UserServiceTest {
                 .id(1L)
                 .keycloakId("test-keycloak-id")
                 .email("test@example.com")
-                .firstName("John")  // Виправлено з firstN
-                .lastName("Doe")    // Виправлено з lastN
+                .firstName("John")
+                .lastName("Doe")
                 .userType(UserType.VOLUNTEER)
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
@@ -100,8 +100,8 @@ class UserServiceTest {
         return UserResponse.builder()
                 .id(1L)
                 .email("test@example.com")
-                .firstName("John")  // Виправлено з firstN
-                .lastName("Doe")    // Виправлено з lastN
+                .firstName("John")
+                .lastName("Doe")
                 .userType(UserType.VOLUNTEER)
                 .isActive(true)
                 .createdAt(LocalDateTime.now())

@@ -36,10 +36,8 @@ public class ParticipationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException("User not found"));
 
-        // Валідації
         validateParticipation(task, user);
 
-        // Створити участь
         Participation participation = Participation.builder()
                 .task(task)
                 .user(user)
@@ -60,10 +58,7 @@ public class ParticipationService {
         if (participationOpt.isPresent()) {
             Participation participation = participationOpt.get();
             Task task = participation.getTask();
-
-            // Валідація виходу
             validateLeaving(task);
-
             participationRepository.delete(participation);
             return true;
         }
@@ -89,19 +84,15 @@ public class ParticipationService {
         return participationRepository.countByTaskId(taskId);
     }
 
-    // Валідації
     private void validateParticipation(Task task, User user) {
-        // Перевірити чи користувач не є автором завдання
         if (task.getCreator().getId().equals(user.getId())) {
             throw new BusinessException("Task creator cannot participate in their own task");
         }
 
-        // Перевірити чи завдання підтримує приєднання
         if (task.getStatus() != TaskStatus.OPEN) {
             throw new BusinessException("Cannot join task that is not open");
         }
 
-        // Перевірити чи є вільні місця
         if (task.getMaxParticipants() != null) {
             long currentParticipants = participationRepository.countByTaskId(task.getId());
             if (currentParticipants >= task.getMaxParticipants()) {
@@ -109,19 +100,16 @@ public class ParticipationService {
             }
         }
 
-        // Перевірити чи користувач вже не учасник
         if (participationRepository.findByTaskIdAndUserId(task.getId(), user.getId()).isPresent()) {
             throw new BusinessException("User is already participating in this task");
         }
 
-        // Перевірити чи дата завершення не минула
         if (task.getScheduledAt() != null && task.getScheduledAt().isBefore(LocalDateTime.now())) {
             throw new BusinessException("Cannot join task that has already ended");
         }
     }
 
     private void validateLeaving(Task task) {
-        // Не можна залишити завдання якщо воно в процесі виконання
         if (task.getStatus() == TaskStatus.IN_PROGRESS) {
             throw new BusinessException("Cannot leave task that is in progress");
         }

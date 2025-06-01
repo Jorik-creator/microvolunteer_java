@@ -29,26 +29,23 @@ public class AuthService {
     public UserResponse registerUser(UserRegistrationRequest request) {
         log.info("Registering new user with email: {}", request.getEmail());
 
-        // Check if user already exists
         Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
         if (existingUser.isPresent()) {
             throw new BusinessException("User with email " + request.getEmail() + " already exists");
         }
 
-        // Create user in Keycloak
         String keycloakUserId = keycloakUtils.createUser(
                 request.getEmail(),
                 request.getPassword(),
-                request.getFirstName(),  // Виправлено з firstN
-                request.getLastName()   // Виправлено з lastN
+                request.getFirstName(),
+                request.getLastName()
         );
 
-        // Save user to database
         User user = User.builder()
                 .keycloakId(keycloakUserId)
                 .email(request.getEmail())
-                .firstName(request.getFirstName())  // Виправлено з firstN
-                .lastName(request.getLastName())    // Виправлено з lastN
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
                 .userType(UserType.VOLUNTEER)
                 .isActive(true)
                 .createdAt(LocalDateTime.now())

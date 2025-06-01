@@ -35,15 +35,10 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "Користувача не знайдено")
     })
     public ResponseEntity<UserResponse> getCurrentUserProfile(Principal principal) {
-        try {
-            String keycloakId = principal.getName();
-            log.info("Отримання профілю для користувача: {}", keycloakId);
-            UserResponse response = userService.getUserByKeycloakId(keycloakId);
-            return ResponseEntity.ok(response);
-        } catch (BusinessException e) {
-            log.error("Помилка при отриманні профілю: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
+        String keycloakId = principal.getName();
+        log.info("Отримання профілю для користувача: {}", keycloakId);
+        UserResponse response = userService.getUserByKeycloakId(keycloakId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
@@ -54,14 +49,9 @@ public class UserController {
     })
     public ResponseEntity<UserResponse> getUserById(
             @Parameter(description = "ID користувача") @PathVariable Long id) {
-        try {
-            log.info("Отримання користувача з ID: {}", id);
-            UserResponse response = userService.getUserById(id);
-            return ResponseEntity.ok(response);
-        } catch (BusinessException e) {
-            log.error("Користувача не знайдено з ID {}: {}", id, e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
+        log.info("Отримання користувача з ID: {}", id);
+        UserResponse response = userService.getUserById(id);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/statistics")
@@ -72,14 +62,9 @@ public class UserController {
     })
     public ResponseEntity<Map<String, Object>> getUserStatistics(
             @Parameter(description = "ID користувача") @PathVariable Long id) {
-        try {
-            log.info("Отримання статистики для користувача: {}", id);
-            Map<String, Object> statistics = userService.getUserStatistics(id);
-            return ResponseEntity.ok(statistics);
-        } catch (BusinessException e) {
-            log.error("Помилка при отриманні статистики для користувача {}: {}", id, e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
+        log.info("Отримання статистики для користувача: {}", id);
+        Map<String, Object> statistics = userService.getUserStatistics(id);
+        return ResponseEntity.ok(statistics);
     }
 
     @PutMapping("/profile")
@@ -94,15 +79,10 @@ public class UserController {
     public ResponseEntity<UserResponse> updateProfile(
             Principal principal,
             @RequestBody Map<String, String> updates) {
-        try {
-            String keycloakId = principal.getName();
-            log.info("Оновлення профілю для користувача: {}", keycloakId);
-            UserResponse response = userService.updateProfile(keycloakId, updates);
-            return ResponseEntity.ok(response);
-        } catch (BusinessException e) {
-            log.error("Помилка при оновленні профілю: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        String keycloakId = principal.getName();
+        log.info("Оновлення профілю для користувача: {}", keycloakId);
+        UserResponse response = userService.updateProfile(keycloakId, updates);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping

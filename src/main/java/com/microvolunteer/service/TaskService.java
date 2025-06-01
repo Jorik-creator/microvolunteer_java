@@ -50,7 +50,6 @@ public class TaskService {
         return taskRepository.findByCreatorId(creatorId);
     }
 
-    // Додано search метод
     public Page<Task> searchTasks(String query, Long categoryId, TaskStatus status, 
                                  LocalDateTime dateFrom, LocalDateTime dateTo, Pageable pageable) {
         log.info("Searching tasks with query: {}, categoryId: {}, status: {}", query, categoryId, status);
@@ -75,7 +74,6 @@ public class TaskService {
         log.info("Updating task with ID: {}", id);
         return taskRepository.findById(id)
                 .map(task -> {
-                    // Перевірити чи користувач має право редагувати
                     validateTaskUpdate(task, updatedTask);
                     
                     task.setTitle(updatedTask.getTitle());
@@ -96,10 +94,7 @@ public class TaskService {
         Optional<Task> taskOpt = taskRepository.findById(id);
         if (taskOpt.isPresent()) {
             Task task = taskOpt.get();
-            
-            // Валідація видалення
             validateTaskDeletion(task);
-            
             taskRepository.deleteById(id);
             return true;
         }
@@ -111,16 +106,13 @@ public class TaskService {
         log.info("Updating task status for ID: {} to {}", id, status);
         return taskRepository.findById(id)
                 .map(task -> {
-                    // Валідація зміни статусу
                     validateStatusChange(task, status);
-                    
                     task.setStatus(status);
                     task.setUpdatedAt(LocalDateTime.now());
                     return taskRepository.save(task);
                 });
     }
 
-    // Додано валідація завершення завдання
     @Transactional
     public Optional<Task> completeTask(Long taskId, Long userId) {
         log.info("Completing task {} by user {}", taskId, userId);
@@ -158,12 +150,8 @@ public class TaskService {
             throw new BusinessException("Cannot update completed task");
         }
         
-        // Перевірити чи нові maxParticipants не менше поточної кількості учасників
-        if (updatedTask.getMaxParticipants() != null) {
-            int currentParticipants = taskRepository.countParticipantsByTaskId(existingTask.getId());
-            if (updatedTask.getMaxParticipants() < currentParticipants) {
-                throw new BusinessException("Cannot reduce max participants below current participant count");
-            }
+        if (task.getMaxParticipants() != null && updatedTask.getMaxParticipants() < currentParticipants) {
+            throw new BusinessException("Cannot reduce max participants below current participant count");
         }
     }
 
@@ -181,7 +169,6 @@ public class TaskService {
     private void validateStatusChange(Task task, TaskStatus newStatus) {
         TaskStatus currentStatus = task.getStatus();
         
-        // Логіка переходів статусів
         switch (currentStatus) {
             case OPEN:
                 if (newStatus != TaskStatus.IN_PROGRESS && newStatus != TaskStatus.COMPLETED) {
@@ -199,7 +186,6 @@ public class TaskService {
     }
 
     private void validateTaskCompletion(Task task, Long userId) {
-        // Перевірити чи користувач є автором завдання
         if (!task.getCreator().getId().equals(userId)) {
             throw new BusinessException("Only task creator can complete the task");
         }

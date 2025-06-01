@@ -1,4 +1,3 @@
--- Create categories table
 CREATE TABLE categories (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
@@ -8,14 +7,12 @@ CREATE TABLE categories (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create users table
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     keycloak_id VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
     user_type VARCHAR(20) NOT NULL DEFAULT 'VOLUNTEER',
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -23,7 +20,6 @@ CREATE TABLE users (
     last_login_at TIMESTAMP
 );
 
--- Create tasks table
 CREATE TABLE tasks (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -39,7 +35,6 @@ CREATE TABLE tasks (
     category_id BIGINT NOT NULL REFERENCES categories(id) ON DELETE CASCADE
 );
 
--- Create participations table
 CREATE TABLE participations (
     id BIGSERIAL PRIMARY KEY,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -49,7 +44,6 @@ CREATE TABLE participations (
     UNIQUE(user_id, task_id)
 );
 
--- Create indexes for better performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_keycloak_id ON users(keycloak_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
@@ -58,7 +52,6 @@ CREATE INDEX idx_tasks_creator_id ON tasks(creator_id);
 CREATE INDEX idx_participations_user_id ON participations(user_id);
 CREATE INDEX idx_participations_task_id ON participations(task_id);
 
--- Insert default categories
 INSERT INTO categories (name, description) VALUES
 ('Екологія', 'Проекти пов''язані з охороною навколишнього середовища'),
 ('Освіта', 'Освітні ініціативи та підтримка навчання'),

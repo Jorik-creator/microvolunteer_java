@@ -2,7 +2,6 @@ spring:
   application:
     name: microvolunteer-dev
 
-  # H2 база данных для разработки
   datasource:
     url: jdbc:h2:mem:microvolunteer_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
@@ -25,14 +24,12 @@ spring:
         format_sql: true
     show-sql: ${SHOW_SQL:true}
 
-  # Flyway отключен для dev профиля, используем DDL auto
   flyway:
     enabled: false
 
 server:
   port: ${SERVER_PORT:8081}
 
-# Keycloak конфигурация для разработки (mock)
 keycloak:
   realm: microvolunteer-dev
   auth-server-url: http://localhost:8080
@@ -40,13 +37,11 @@ keycloak:
     username: admin
     password: admin
 
-# JWT конфигурация для разработки
 app:
   jwt:
     secret: microvolunteer-dev-secret-key-for-testing-purposes-only-not-for-production
-    expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+    expiration: ${JWT_EXPIRATION:86400000}
 
-# Swagger конфигурация для разработки
 springdoc:
   api-docs:
     enabled: true
@@ -62,7 +57,6 @@ springdoc:
       - url: /v3/api-docs
         name: Microvolunteer API v1.0
 
-# Логирование для разработки
 logging:
   level:
     com.microvolunteer: DEBUG
@@ -75,7 +69,6 @@ logging:
   file:
     name: ${LOG_FILE:logs/microvolunteer-dev.log}
 
-# Management endpoints для разработки
 management:
   endpoints:
     web:

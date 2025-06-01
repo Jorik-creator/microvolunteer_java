@@ -44,13 +44,8 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException("User not found with id: " + id));
     }
 
-    public Optional<UserResponse> getUserByEmail(String email) {
-        log.info("Fetching user with email: {}", email);
-        return userRepository.findByEmail(email)
-                .map(userMapper::toResponse);
-    }
 
-    // Додано метод для отримання користувача за Keycloak ID
+
     public UserResponse getUserByKeycloakId(String keycloakId) {
         log.info("Fetching user with Keycloak ID: {}", keycloakId);
         return userRepository.findByKeycloakId(keycloakId)
@@ -58,16 +53,9 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException("User not found with keycloak id: " + keycloakId));
     }
 
-    // Додано метод для отримання User entity за Keycloak ID  
-    public User getUserEntityByKeycloakId(String keycloakId) {
-        log.info("Fetching user entity with Keycloak ID: {}", keycloakId);
-        return userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new BusinessException("User not found with keycloak id: " + keycloakId));
-    }
 
-    public Optional<User> getUserEntityById(Long id) {
-        return userRepository.findById(id);
-    }
+
+
 
     public List<UserResponse> getActiveUsers() {
         log.info("Fetching active users");
@@ -77,15 +65,8 @@ public class UserService {
                 .toList();
     }
 
-    public List<UserResponse> getUsersByType(UserType userType) {
-        log.info("Fetching users with type: {}", userType);
-        List<User> users = userRepository.findByUserType(userType);
-        return users.stream()
-                .map(userMapper::toResponse)
-                .toList();
-    }
 
-    // Додано метод для отримання статистики користувача
+
     public Map<String, Object> getUserStatistics(Long userId) {
         log.info("Fetching statistics for user: {}", userId);
         
@@ -117,7 +98,6 @@ public class UserService {
         return statistics;
     }
 
-    // Додано метод для оновлення профілю
     @Transactional
     public UserResponse updateProfile(String keycloakId, Map<String, String> updates) {
         log.info("Updating profile for user with Keycloak ID: {}", keycloakId);
@@ -142,12 +122,7 @@ public class UserService {
             user.setLastName(lastName.trim());
         }
         
-        if (updates.containsKey("phone")) {
-            String phone = updates.get("phone");
-            if (phone != null && !phone.trim().isEmpty()) {
-                user.setPhone(phone.trim());
-            }
-        }
+
         
         if (updates.containsKey("email")) {
             String email = updates.get("email");
@@ -168,47 +143,9 @@ public class UserService {
         return userMapper.toResponse(savedUser);
     }
 
-    @Transactional
-    public UserResponse createUser(User user) {
-        log.info("Creating new user with email: {}", user.getEmail());
-        
-        // Валідації
-        validateUserCreation(user);
-        
-        user.setIsActive(true);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-        
-        User savedUser = userRepository.save(user);
-        return userMapper.toResponse(savedUser);
-    }
 
-    @Transactional
-    public Optional<UserResponse> updateUser(Long id, User updatedUser) {
-        log.info("Updating user with ID: {}", id);
-        
-        return userRepository.findById(id)
-                .map(user -> {
-                    validateUserUpdate(user, updatedUser);
-                    
-                    if (updatedUser.getFirstName() != null) {
-                        user.setFirstName(updatedUser.getFirstName());
-                    }
-                    if (updatedUser.getLastName() != null) {
-                        user.setLastName(updatedUser.getLastName());
-                    }
-                    if (updatedUser.getPhone() != null) {
-                        user.setPhone(updatedUser.getPhone());
-                    }
-                    if (updatedUser.getUserType() != null) {
-                        user.setUserType(updatedUser.getUserType());
-                    }
-                    
-                    user.setUpdatedAt(LocalDateTime.now());
-                    User savedUser = userRepository.save(user);
-                    return userMapper.toResponse(savedUser);
-                });
-    }
+
+
 
     @Transactional
     public boolean deactivateUser(Long id) {
@@ -235,48 +172,9 @@ public class UserService {
                 });
     }
 
-    // Валідації
-    private void validateUserCreation(User user) {
-        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
-            throw new BusinessException("Email cannot be empty");
-        }
-        
-        if (!isValidEmail(user.getEmail())) {
-            throw new BusinessException("Invalid email format");
-        }
-        
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new BusinessException("User with this email already exists");
-        }
-        
-        if (user.getFirstName() == null || user.getFirstName().trim().isEmpty()) {
-            throw new BusinessException("First name cannot be empty");
-        }
-        
-        if (user.getLastName() == null || user.getLastName().trim().isEmpty()) {
-            throw new BusinessException("Last name cannot be empty");
-        }
-        
-        if (user.getUserType() == null) {
-            user.setUserType(UserType.VOLUNTEER); // За замовчуванням
-        }
-    }
 
-    private void validateUserUpdate(User existingUser, User updatedUser) {
-        if (!existingUser.getIsActive()) {
-            throw new BusinessException("Cannot update inactive user");
-        }
-        
-        // Перевірити чи змінюється email
-        if (updatedUser.getEmail() != null && !updatedUser.getEmail().equals(existingUser.getEmail())) {
-            if (userRepository.findByEmail(updatedUser.getEmail()).isPresent()) {
-                throw new BusinessException("User with this email already exists");
-            }
-            if (!isValidEmail(updatedUser.getEmail())) {
-                throw new BusinessException("Invalid email format");
-            }
-        }
-    }
+
+
 
     private void validateUserDeactivation(User user) {
         if (!user.getIsActive()) {

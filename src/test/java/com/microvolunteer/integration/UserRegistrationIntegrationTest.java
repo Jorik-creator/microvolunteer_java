@@ -41,7 +41,6 @@ class UserRegistrationIntegrationTest {
         request.setLastName("User");
         request.setPassword("SecurePassword123!");
         request.setUserType(UserType.VOLUNTEER);
-        request.setPhone("+380671234567");
 
         // When & Then
         mockMvc.perform(post("/api/auth/register")
