@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -18,21 +17,18 @@ public class TaskResponse {
     private Long id;
     private String title;
     private String description;
-    private CategoryResponse category;
-    private UserResponse creator;
     private String location;
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
-    private LocalDateTime deadline;
-    private Integer duration;
-    private Integer maxVolunteers;
-    private Integer currentVolunteers;
-    private Integer availableSpots;
-    private String status;
-    private List<String> images;
+    private String requiredSkills;
+    private Integer maxParticipants;
+    private Integer participantCount;
+    private TaskStatus status;
+    private LocalDateTime scheduledAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Boolean pastDue;
-    private Boolean canJoin;
-    private Boolean participant;
+    
+    // Додаткові поля для зручності
+    private String creatorName;
+    private String categoryName;
+    private UserResponse creator;
+    private CategoryResponse category;
 }

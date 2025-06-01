@@ -9,15 +9,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -25,51 +24,44 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain) throws ServletException, IOException {
-
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String userEmail;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        jwt = authHeader.substring(7);
         try {
-            final String jwt = authHeader.substring(7);
+            userEmail = jwtService.extractUsername(jwt);
             
-            if (jwtService.isTokenValid(jwt)) {
-                // Витягуємо інформацію з Keycloak токена
-                final String keycloakId = jwtService.extractKeycloakId(jwt);
-                final List<String> roles = jwtService.extractRoles(jwt);
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
                 
-                if (keycloakId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    
-                    // Конвертуємо ролі в Spring Security authorities
-                    List<SimpleGrantedAuthority> authorities = roles.stream()
-                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
-                            .collect(Collectors.toList());
-                    
-                    // Якщо немає ролей, додаємо базову роль USER
-                    if (authorities.isEmpty()) {
-                        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-                    }
-
+                if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            keycloakId, null, authorities);
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    
-                    log.debug("Аутентифіковано користувача {} з ролями: {}", keycloakId, roles);
                 }
             }
         } catch (Exception e) {
-            log.error("Помилка аутентифікації JWT токена: {}", e.getMessage());
-            // Не встановлюємо аутентифікацію при помилці
+            log.error("Cannot set user authentication: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);

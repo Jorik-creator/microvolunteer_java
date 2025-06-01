@@ -2,76 +2,73 @@ package com.microvolunteer.entity;
 
 import com.microvolunteer.enums.UserType;
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 150)
-    private String username;
+    @Column(name = "keycloak_id", unique = true, nullable = false, length = 255)
+    private String keycloakId;
 
-    @Column(unique = true, nullable = false, length = 254)
+    @Column(name = "email", unique = true, nullable = false, length = 255)
     private String email;
 
-    @Column(nullable = false, length = 128)
-    private String password;
-
-    @Column(name = "first_name", length = 150)
+    @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
-    @Column(name = "last_name", length = 150)
+    @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "user_type", nullable = false, length = 20)
-    private UserType userType;
-
-    @Column(length = 20)
+    @Column(name = "phone", length = 20)
     private String phone;
 
-    @Column(columnDefinition = "TEXT")
-    private String bio;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_type", nullable = false)
+    private UserType userType;
 
-    @Column(length = 255)
-    private String address;
-
-    @Column(name = "profile_image", length = 255)
-    private String profileImage;
-
-    @Column(name = "is_active")
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
-    @CreationTimestamp
-    @Column(name = "date_joined", updatable = false)
-    private LocalDateTime dateJoined;
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "last_login")
-    private LocalDateTime lastLogin;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
-    @Column(name = "keycloak_id", unique = true)
-    private String keycloakId;
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
-    @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL)
-    @Builder.Default
-    private Set<Task> createdTasks = new HashSet<>();
+    // Relationships
+    @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Task> createdTasks;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    @Builder.Default
-    private Set<Participation> participations = new HashSet<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Participation> participations;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

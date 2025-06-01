@@ -1,6 +1,7 @@
 package com.microvolunteer.controller;
 
 import com.microvolunteer.dto.response.UserResponse;
+import com.microvolunteer.exception.BusinessException;
 import com.microvolunteer.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,10 +35,15 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "Користувача не знайдено")
     })
     public ResponseEntity<UserResponse> getCurrentUserProfile(Principal principal) {
-        String keycloakId = principal.getName();
-        log.info("Отримання профілю для користувача: {}", keycloakId);
-        UserResponse response = userService.getUserByKeycloakId(keycloakId);
-        return ResponseEntity.ok(response);
+        try {
+            String keycloakId = principal.getName();
+            log.info("Отримання профілю для користувача: {}", keycloakId);
+            UserResponse response = userService.getUserByKeycloakId(keycloakId);
+            return ResponseEntity.ok(response);
+        } catch (BusinessException e) {
+            log.error("Помилка при отриманні профілю: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/{id}")
@@ -48,9 +54,14 @@ public class UserController {
     })
     public ResponseEntity<UserResponse> getUserById(
             @Parameter(description = "ID користувача") @PathVariable Long id) {
-        log.info("Отримання користувача з ID: {}", id);
-        UserResponse response = userService.getUserById(id);
-        return ResponseEntity.ok(response);
+        try {
+            log.info("Отримання користувача з ID: {}", id);
+            UserResponse response = userService.getUserById(id);
+            return ResponseEntity.ok(response);
+        } catch (BusinessException e) {
+            log.error("Користувача не знайдено з ID {}: {}", id, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/{id}/statistics")
@@ -61,9 +72,14 @@ public class UserController {
     })
     public ResponseEntity<Map<String, Object>> getUserStatistics(
             @Parameter(description = "ID користувача") @PathVariable Long id) {
-        log.info("Отримання статистики для користувача: {}", id);
-        Map<String, Object> statistics = userService.getUserStatistics(id);
-        return ResponseEntity.ok(statistics);
+        try {
+            log.info("Отримання статистики для користувача: {}", id);
+            Map<String, Object> statistics = userService.getUserStatistics(id);
+            return ResponseEntity.ok(statistics);
+        } catch (BusinessException e) {
+            log.error("Помилка при отриманні статистики для користувача {}: {}", id, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/profile")
@@ -71,15 +87,61 @@ public class UserController {
     @Operation(summary = "Оновити профіль поточного користувача")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Профіль успішно оновлено"),
+            @ApiResponse(responseCode = "400", description = "Невірні дані"),
             @ApiResponse(responseCode = "401", description = "Неавторизований доступ"),
             @ApiResponse(responseCode = "404", description = "Користувача не знайдено")
     })
     public ResponseEntity<UserResponse> updateProfile(
             Principal principal,
             @RequestBody Map<String, String> updates) {
-        String keycloakId = principal.getName();
-        log.info("Оновлення профілю для користувача: {}", keycloakId);
-        UserResponse response = userService.updateProfile(keycloakId, updates);
-        return ResponseEntity.ok(response);
+        try {
+            String keycloakId = principal.getName();
+            log.info("Оновлення профілю для користувача: {}", keycloakId);
+            UserResponse response = userService.updateProfile(keycloakId, updates);
+            return ResponseEntity.ok(response);
+        } catch (BusinessException e) {
+            log.error("Помилка при оновленні профілю: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Отримати всіх користувачів (тільки для адміністраторів)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список користувачів отримано"),
+            @ApiResponse(responseCode = "403", description = "Доступ заборонено")
+    })
+    public ResponseEntity<java.util.List<UserResponse>> getAllUsers() {
+        log.info("Отримання всіх користувачів");
+        java.util.List<UserResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/active")
+    @Operation(summary = "Отримати активних користувачів")
+    public ResponseEntity<java.util.List<UserResponse>> getActiveUsers() {
+        log.info("Отримання активних користувачів");
+        java.util.List<UserResponse> users = userService.getActiveUsers();
+        return ResponseEntity.ok(users);
+    }
+
+    @PutMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Деактивувати користувача (тільки для адміністраторів)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Користувача деактивовано"),
+            @ApiResponse(responseCode = "404", description = "Користувача не знайдено"),
+            @ApiResponse(responseCode = "403", description = "Доступ заборонено")
+    })
+    public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
+        log.info("Деактивація користувача з ID: {}", id);
+        boolean success = userService.deactivateUser(id);
+        
+        if (success) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

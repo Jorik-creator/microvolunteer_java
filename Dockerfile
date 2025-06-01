@@ -30,7 +30,7 @@ RUN addgroup -g 1001 -S microvolunteer && \
     adduser -S microvolunteer -u 1001 -G microvolunteer
 
 # Створення необхідних директорій
-RUN mkdir -p /app/uploads /app/logs && \
+RUN mkdir -p /app/logs && \
     chown -R microvolunteer:microvolunteer /app
 
 # Копіювання JAR файлу з build stage
@@ -45,8 +45,6 @@ ENV JAVA_OPTS="-Xmx512m -Xms256m \
     -XX:+UseContainerSupport \
     -XX:MaxRAMPercentage=75.0 \
     -XX:+ExitOnOutOfMemoryError \
-    -XX:+UnlockExperimentalVMOptions \
-    -XX:+UseCGroupMemoryLimitForHeap \
     -Djava.security.egd=file:/dev/./urandom \
     -Dspring.profiles.active=docker"
 

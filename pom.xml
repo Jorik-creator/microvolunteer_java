@@ -21,7 +21,6 @@
 		<springdoc.version>2.7.0</springdoc.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<lombok-mapstruct.version>0.2.0</lombok-mapstruct.version>
-		<testcontainers.version>1.20.4</testcontainers.version>
 	</properties>
 
 	<dependencies>
@@ -125,31 +124,11 @@
 			<scope>test</scope>
 		</dependency>
 
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>junit-jupiter</artifactId>
-			<version>${testcontainers.version}</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>postgresql</artifactId>
-			<version>${testcontainers.version}</version>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- Jakarta WS-RS API -->
-		<dependency>
-			<groupId>jakarta.ws.rs</groupId>
-			<artifactId>jakarta.ws.rs-api</artifactId>
-		</dependency>
-
-		<!-- H2 for tests -->
+		<!-- H2 Database for tests and dev profile -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<scope>test</scope>
+			<scope>runtime</scope>
 		</dependency>
 	</dependencies>
 

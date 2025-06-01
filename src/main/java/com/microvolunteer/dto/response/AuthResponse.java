@@ -10,21 +10,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Відповідь на авторизацію")
+@Schema(description = "Відповідь на синхронізацію з Keycloak")
 public class AuthResponse {
     
-    @Schema(description = "JWT токен доступу", example = "eyJhbGciOiJIUzI1NiJ9...")
-    private String accessToken;
-    
-    @Schema(description = "Refresh токен", example = "eyJhbGciOiJIUzI1NiJ9...")
-    private String refreshToken;
-    
-    @Schema(description = "Тип токену", example = "Bearer")
-    @Builder.Default
-    private String tokenType = "Bearer";
-    
-    @Schema(description = "Час життя токену в секундах", example = "3600")
-    private Long expiresIn;
+    @Schema(description = "Повідомлення про успіх", example = "Користувач успішно синхронізований")
+    private String message;
     
     @Schema(description = "ID користувача", example = "1")
     private Long userId;
@@ -37,10 +27,4 @@ public class AuthResponse {
     
     @Schema(description = "Тип користувача", example = "VOLUNTEER")
     private String userType;
-    
-    @Schema(description = "Ім'я", example = "John")
-    private String firstName;
-    
-    @Schema(description = "Прізвище", example = "Doe")
-    private String lastName;
 }

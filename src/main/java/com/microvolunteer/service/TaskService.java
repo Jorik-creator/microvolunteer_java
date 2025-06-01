@@ -1,32 +1,21 @@
 package com.microvolunteer.service;
 
-import com.microvolunteer.dto.request.TaskCreateRequest;
-import com.microvolunteer.dto.request.TaskSearchRequest;
-import com.microvolunteer.dto.response.TaskResponse;
-import com.microvolunteer.entity.Category;
-import com.microvolunteer.entity.Participation;
 import com.microvolunteer.entity.Task;
 import com.microvolunteer.entity.User;
 import com.microvolunteer.enums.TaskStatus;
-import com.microvolunteer.enums.UserType;
 import com.microvolunteer.exception.BusinessException;
-import com.microvolunteer.mapper.TaskMapper;
-import com.microvolunteer.repository.CategoryRepository;
-import com.microvolunteer.repository.ParticipationRepository;
 import com.microvolunteer.repository.TaskRepository;
 import com.microvolunteer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -35,320 +24,188 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
-    private final CategoryRepository categoryRepository;
-    private final ParticipationRepository participationRepository;
-    private final TaskMapper taskMapper;
-    
-    // Універсальний метод для пошуку користувача
-    private User findUserByIdentifier(String identifier) {
-        return userRepository.findByKeycloakId(identifier)
-                .orElse(userRepository.findByUsername(identifier)
-                        .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено")));
-    }
-    
-    private User findUserByIdentifierOptional(String identifier) {
-        if (identifier == null) return null;
-        return userRepository.findByKeycloakId(identifier)
-                .orElse(userRepository.findByUsername(identifier).orElse(null));
+
+    public List<Task> getAllTasks() {
+        log.info("Fetching all tasks");
+        return taskRepository.findAll();
     }
 
-    @Transactional
-    public TaskResponse createTask(String identifier, TaskCreateRequest request) {
-        log.info("Створення нового завдання користувачем: {}", identifier);
-
-        User user = findUserByIdentifier(identifier);
-
-        // Перевірка типу користувача
-        if (user.getUserType() != UserType.VULNERABLE) {
-            throw BusinessException.forbidden("Тільки вразливі люди можуть створювати завдання");
-        }
-
-        // Перевірка категорії
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> BusinessException.notFound("Категорію не знайдено"));
-
-        // Створення завдання
-        Task task = taskMapper.toEntity(request);
-        task.setCreator(user);
-        task.setCategory(category);
-
-        // Перевірка дати закінчення
-        if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
-            throw BusinessException.badRequest("Дата закінчення не може бути раніше дати початку");
-        }
-
-        Task savedTask = taskRepository.save(task);
-        log.info("Завдання {} успішно створено", savedTask.getId());
-
-        TaskResponse response = taskMapper.toResponse(savedTask);
-        response.setCanJoin(false);
-        response.setParticipant(false);
-
-        return response;
+    public Optional<Task> getTaskById(Long id) {
+        log.info("Fetching task with ID: {}", id);
+        return taskRepository.findById(id);
     }
 
-    @Transactional(readOnly = true)
-    public Page<TaskResponse> searchTasks(TaskSearchRequest request, String identifier) {
-        log.info("Пошук завдань з параметрами: {}", request);
-
-        Pageable pageable = PageRequest.of(
-                request.getPage(),
-                request.getSize(),
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
-
-        LocalDateTime dateFrom = request.getDateFrom() != null ?
-                request.getDateFrom().atStartOfDay() : null;
-        LocalDateTime dateTo = request.getDateTo() != null ?
-                request.getDateTo().atTime(23, 59, 59) : null;
-
-        Page<Task> tasks = taskRepository.searchTasks(
-                request.getQuery(),
-                request.getCategoryId(),
-                request.getStatus(),
-                dateFrom,
-                dateTo,
-                pageable
-        );
-
-        User currentUser = findUserByIdentifierOptional(identifier);
-
-        final User user = currentUser;
-
-        return tasks.map(task -> {
-            TaskResponse response = taskMapper.toResponse(task);
-
-            if (user != null) {
-                boolean isParticipant = participationRepository
-                        .existsByTaskIdAndUserId(task.getId(), user.getId());
-                boolean canJoin = !isParticipant &&
-                        task.getStatus() == TaskStatus.OPEN &&
-                        task.getAvailableSpots() > 0 &&
-                        !task.isPastDue() &&
-                        user.getUserType() == UserType.VOLUNTEER &&
-                        !task.getCreator().getId().equals(user.getId());
-
-                response.setParticipant(isParticipant);
-                response.setCanJoin(canJoin);
-            } else {
-                response.setParticipant(false);
-                response.setCanJoin(false);
-            }
-
-            return response;
-        });
+    public Page<Task> getTasksByStatus(TaskStatus status, Pageable pageable) {
+        log.info("Fetching tasks with status: {}", status);
+        return taskRepository.findByStatus(status, pageable);
     }
 
-    @Transactional(readOnly = true)
-    public TaskResponse getTaskById(Long taskId, String identifier) {
-        log.info("Отримання завдання з ID: {}", taskId);
+    public List<Task> getTasksByCategory(Long categoryId) {
+        log.info("Fetching tasks for category ID: {}", categoryId);
+        return taskRepository.findByCategoryId(categoryId);
+    }
 
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> BusinessException.notFound("Завдання не знайдено"));
+    public List<Task> getTasksByCreator(Long creatorId) {
+        log.info("Fetching tasks created by user ID: {}", creatorId);
+        return taskRepository.findByCreatorId(creatorId);
+    }
 
-        TaskResponse response = taskMapper.toResponse(task);
-
-        if (identifier != null) {
-            User user = findUserByIdentifierOptional(identifier);
-            if (user != null) {
-                boolean isParticipant = participationRepository
-                        .existsByTaskIdAndUserId(task.getId(), user.getId());
-                boolean canJoin = !isParticipant &&
-                        task.getStatus() == TaskStatus.OPEN &&
-                        task.getAvailableSpots() > 0 &&
-                        !task.isPastDue() &&
-                        user.getUserType() == UserType.VOLUNTEER &&
-                        !task.getCreator().getId().equals(user.getId());
-
-                response.setParticipant(isParticipant);
-                response.setCanJoin(canJoin);
-            }
-        }
-
-        return response;
+    // Додано search метод
+    public Page<Task> searchTasks(String query, Long categoryId, TaskStatus status, 
+                                 LocalDateTime dateFrom, LocalDateTime dateTo, Pageable pageable) {
+        log.info("Searching tasks with query: {}, categoryId: {}, status: {}", query, categoryId, status);
+        return taskRepository.searchTasks(query, categoryId, status, dateFrom, dateTo, pageable);
     }
 
     @Transactional
-    public TaskResponse updateTask(String keycloakId, Long taskId, TaskCreateRequest request) {
-        log.info("Оновлення завдання {} користувачем: {}", taskId, keycloakId);
-
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> BusinessException.notFound("Завдання не знайдено"));
-
-        // Перевірка прав
-        if (!task.getCreator().getId().equals(user.getId())) {
-            throw BusinessException.forbidden("У вас немає дозволу на редагування цього завдання");
-        }
-
-        // Перевірка категорії
-        if (!task.getCategory().getId().equals(request.getCategoryId())) {
-            Category category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> BusinessException.notFound("Категорію не знайдено"));
-            task.setCategory(category);
-        }
-
-        // Оновлення полів
-        taskMapper.updateEntityFromRequest(request, task);
-
-        Task updatedTask = taskRepository.save(task);
-        log.info("Завдання {} успішно оновлено", updatedTask.getId());
-
-        return taskMapper.toResponse(updatedTask);
+    public Task createTask(Task task) {
+        log.info("Creating new task: {}", task.getTitle());
+        
+        // Валідації
+        validateTaskCreation(task);
+        
+        task.setStatus(TaskStatus.OPEN);
+        task.setCreatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now());
+        return taskRepository.save(task);
     }
 
     @Transactional
-    public TaskResponse joinTask(String keycloakId, Long taskId) {
-        log.info("Приєднання до завдання {} користувачем: {}", taskId, keycloakId);
-
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> BusinessException.notFound("Завдання не знайдено"));
-
-        // Перевірка типу користувача
-        if (user.getUserType() != UserType.VOLUNTEER) {
-            throw BusinessException.forbidden("Тільки волонтери можуть приєднуватися до завдань");
-        }
-
-        // Перевірка чи не автор
-        if (task.getCreator().getId().equals(user.getId())) {
-            throw BusinessException.badRequest("Ви не можете приєднатися до власного завдання");
-        }
-
-        // Перевірка статусу
-        if (task.getStatus() != TaskStatus.OPEN) {
-            throw BusinessException.badRequest("Це завдання не є відкритим для участі");
-        }
-
-        // Перевірка вільних місць
-        if (task.getAvailableSpots() <= 0) {
-            throw BusinessException.badRequest("Усі місця для цього завдання вже зайняті");
-        }
-
-        // Перевірка дати
-        if (task.isPastDue()) {
-            throw BusinessException.badRequest("Це завдання вже минуло");
-        }
-
-        // Перевірка чи вже учасник
-        if (participationRepository.existsByTaskIdAndUserId(task.getId(), user.getId())) {
-            throw BusinessException.badRequest("Ви вже приєдналися до цього завдання");
-        }
-
-        // Створення участі
-        Participation participation = Participation.builder()
-                .task(task)
-                .user(user)
-                .build();
-        participationRepository.save(participation);
-
-        // Оновлення лічильника учасників
-        task.setCurrentVolunteers(task.getCurrentVolunteers() + 1);
-
-        // Оновлення статусу якщо всі місця заповнені
-        if (task.getAvailableSpots() == 0) { // всі місця заповнені
-            task.setStatus(TaskStatus.IN_PROGRESS);
-        }
-        taskRepository.save(task);
-
-        log.info("Користувач {} успішно приєднався до завдання {}", user.getUsername(), task.getId());
-
-        TaskResponse response = taskMapper.toResponse(task);
-        response.setParticipant(true);
-        response.setCanJoin(false);
-
-        return response;
-    }
-
-    @Transactional
-    public TaskResponse leaveTask(String keycloakId, Long taskId) {
-        log.info("Відмова від участі у завданні {} користувачем: {}", taskId, keycloakId);
-
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> BusinessException.notFound("Завдання не знайдено"));
-
-        Participation participation = participationRepository
-                .findByTaskIdAndUserId(task.getId(), user.getId())
-                .orElseThrow(() -> BusinessException.notFound("Ви не є учасником цього завдання"));
-
-        // Перевірка дати
-        if (task.isPastDue()) {
-            throw BusinessException.badRequest("Ви не можете покинути завдання, яке вже розпочалося");
-        }
-
-        // Видалення участі
-        participationRepository.delete(participation);
-
-        // Оновлення лічильника учасників
-        task.setCurrentVolunteers(Math.max(0, task.getCurrentVolunteers() - 1));
-
-        // Оновлення статусу якщо було в процесі
-        if (task.getStatus() == TaskStatus.IN_PROGRESS) {
-            task.setStatus(TaskStatus.OPEN);
-        }
-        taskRepository.save(task);
-
-        log.info("Користувач {} успішно покинув завдання {}", user.getUsername(), task.getId());
-
-        TaskResponse response = taskMapper.toResponse(task);
-        response.setParticipant(false);
-        response.setCanJoin(true);
-
-        return response;
-    }
-
-    @Transactional
-    public TaskResponse completeTask(String keycloakId, Long taskId) {
-        log.info("Завершення завдання {} користувачем: {}", taskId, keycloakId);
-
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> BusinessException.notFound("Завдання не знайдено"));
-
-        // Перевірка прав
-        if (!task.getCreator().getId().equals(user.getId())) {
-            throw BusinessException.forbidden("У вас немає дозволу на завершення цього завдання");
-        }
-
-        // Перевірка статусу
-        if (task.getStatus() == TaskStatus.COMPLETED) {
-            throw BusinessException.badRequest("Це завдання вже завершено");
-        }
-
-        if (task.getStatus() == TaskStatus.CANCELLED) {
-            throw BusinessException.badRequest("Неможливо завершити скасоване завдання");
-        }
-
-        task.setStatus(TaskStatus.COMPLETED);
-        Task updatedTask = taskRepository.save(task);
-
-        log.info("Завдання {} успішно завершено", task.getId());
-
-        return taskMapper.toResponse(updatedTask);
-    }
-
-    @Transactional(readOnly = true)
-    public List<TaskResponse> getRecentTasks() {
-        log.info("Отримання останніх завдань");
-
-        List<Task> tasks = taskRepository.findTop6ByStatusOrderByCreatedAtDesc(TaskStatus.OPEN);
-
-        return tasks.stream()
+    public Optional<Task> updateTask(Long id, Task updatedTask) {
+        log.info("Updating task with ID: {}", id);
+        return taskRepository.findById(id)
                 .map(task -> {
-                    TaskResponse response = taskMapper.toResponse(task);
-                    response.setCanJoin(false);
-                    response.setParticipant(false);
-                    return response;
-                })
-                .collect(Collectors.toList());
+                    // Перевірити чи користувач має право редагувати
+                    validateTaskUpdate(task, updatedTask);
+                    
+                    task.setTitle(updatedTask.getTitle());
+                    task.setDescription(updatedTask.getDescription());
+                    task.setLocation(updatedTask.getLocation());
+                    task.setRequiredSkills(updatedTask.getRequiredSkills());
+                    task.setMaxParticipants(updatedTask.getMaxParticipants());
+                    task.setScheduledAt(updatedTask.getScheduledAt());
+                    task.setUpdatedAt(LocalDateTime.now());
+                    return taskRepository.save(task);
+                });
+    }
+
+    @Transactional
+    public boolean deleteTask(Long id) {
+        log.info("Deleting task with ID: {}", id);
+        
+        Optional<Task> taskOpt = taskRepository.findById(id);
+        if (taskOpt.isPresent()) {
+            Task task = taskOpt.get();
+            
+            // Валідація видалення
+            validateTaskDeletion(task);
+            
+            taskRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    @Transactional
+    public Optional<Task> updateTaskStatus(Long id, TaskStatus status) {
+        log.info("Updating task status for ID: {} to {}", id, status);
+        return taskRepository.findById(id)
+                .map(task -> {
+                    // Валідація зміни статусу
+                    validateStatusChange(task, status);
+                    
+                    task.setStatus(status);
+                    task.setUpdatedAt(LocalDateTime.now());
+                    return taskRepository.save(task);
+                });
+    }
+
+    // Додано валідація завершення завдання
+    @Transactional
+    public Optional<Task> completeTask(Long taskId, Long userId) {
+        log.info("Completing task {} by user {}", taskId, userId);
+        
+        return taskRepository.findById(taskId)
+                .map(task -> {
+                    validateTaskCompletion(task, userId);
+                    task.setStatus(TaskStatus.COMPLETED);
+                    task.setUpdatedAt(LocalDateTime.now());
+                    return taskRepository.save(task);
+                });
+    }
+
+    // Приватні методи валідації
+    private void validateTaskCreation(Task task) {
+        if (task.getTitle() == null || task.getTitle().trim().isEmpty()) {
+            throw new BusinessException("Task title cannot be empty");
+        }
+        
+        if (task.getMaxParticipants() != null && task.getMaxParticipants() <= 0) {
+            throw new BusinessException("Max participants must be positive");
+        }
+        
+        if (task.getScheduledAt() != null && task.getScheduledAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("Scheduled time cannot be in the past");
+        }
+        
+        if (task.getCreator() == null) {
+            throw new BusinessException("Task must have a creator");
+        }
+    }
+
+    private void validateTaskUpdate(Task existingTask, Task updatedTask) {
+        if (existingTask.getStatus() == TaskStatus.COMPLETED) {
+            throw new BusinessException("Cannot update completed task");
+        }
+        
+        // Перевірити чи нові maxParticipants не менше поточної кількості учасників
+        if (updatedTask.getMaxParticipants() != null) {
+            int currentParticipants = taskRepository.countParticipantsByTaskId(existingTask.getId());
+            if (updatedTask.getMaxParticipants() < currentParticipants) {
+                throw new BusinessException("Cannot reduce max participants below current participant count");
+            }
+        }
+    }
+
+    private void validateTaskDeletion(Task task) {
+        if (task.getStatus() == TaskStatus.IN_PROGRESS) {
+            throw new BusinessException("Cannot delete task that is in progress");
+        }
+        
+        int participants = taskRepository.countParticipantsByTaskId(task.getId());
+        if (participants > 0) {
+            throw new BusinessException("Cannot delete task with participants");
+        }
+    }
+
+    private void validateStatusChange(Task task, TaskStatus newStatus) {
+        TaskStatus currentStatus = task.getStatus();
+        
+        // Логіка переходів статусів
+        switch (currentStatus) {
+            case OPEN:
+                if (newStatus != TaskStatus.IN_PROGRESS && newStatus != TaskStatus.COMPLETED) {
+                    throw new BusinessException("Open task can only be moved to IN_PROGRESS or COMPLETED");
+                }
+                break;
+            case IN_PROGRESS:
+                if (newStatus != TaskStatus.COMPLETED && newStatus != TaskStatus.OPEN) {
+                    throw new BusinessException("In progress task can only be moved to COMPLETED or back to OPEN");
+                }
+                break;
+            case COMPLETED:
+                throw new BusinessException("Completed task status cannot be changed");
+        }
+    }
+
+    private void validateTaskCompletion(Task task, Long userId) {
+        // Перевірити чи користувач є автором завдання
+        if (!task.getCreator().getId().equals(userId)) {
+            throw new BusinessException("Only task creator can complete the task");
+        }
+        
+        if (task.getStatus() == TaskStatus.COMPLETED) {
+            throw new BusinessException("Task is already completed");
+        }
     }
 }

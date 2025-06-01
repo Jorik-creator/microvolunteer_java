@@ -1,6 +1,9 @@
 spring:
+  application:
+    name: microvolunteer-test
+
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password: 
     driver-class-name: org.h2.Driver
@@ -11,35 +14,35 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
-        format_sql: false
+        format_sql: true
     show-sql: false
 
   flyway:
     enabled: false
 
-  # Вимкнення безпеки для тестів
-  security:
-    enabled: false
+  h2:
+    console:
+      enabled: true
 
-# Тестова конфігурація
+# Test Keycloak configuration
 keycloak:
   realm: test-realm
-  auth-server-url: http://localhost:8080
+  auth-server-url: http://localhost:8080/auth
   admin:
     username: test-admin
     password: test-password
 
+# Test JWT configuration
 app:
   jwt:
-    secret: test-secret-key-for-jwt-that-is-at-least-256-bits-long-for-testing
-    expiration: 3600000 # 1 година
-  upload:
-    dir: test-uploads
+    secret: test-secret-key-that-should-be-at-least-256-bits-long-for-testing-purposes
+    expiration: 3600000 # 1 hour for tests
 
-# Логування для тестів
+# Logging for tests
 logging:
   level:
-    com.microvolunteer: DEBUG
+    com.microvolunteer: WARN
     org.springframework.security: WARN
     org.springframework.web: WARN
-    org.hibernate: WARN
+    org.hibernate.SQL: WARN
+    org.testcontainers: WARN

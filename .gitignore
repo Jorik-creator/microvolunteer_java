@@ -1,14 +1,11 @@
-HELP.md
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-### Java ###
-# Compiled class files
+# Build and compiled files
+target/
 *.class
 
 # Log files
 *.log
 logs/
+microvolunteer.log
 
 # Package files
 *.jar
@@ -23,8 +20,9 @@ logs/
 hs_err_pid*
 replay_pid*
 
-### Maven ###
-target/
+# Maven
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -32,26 +30,15 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
 
-### Gradle ###
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-**/build/
-
-### IntelliJ IDEA ###
+# IDEs
 .idea/
 *.iws
 *.iml
 *.ipr
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### Eclipse ###
-.apt_generated
+.vscode/
+.eclipse/
 .classpath
 .factorypath
 .project
@@ -59,74 +46,39 @@ out/
 .springBeans
 .sts4-cache
 bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
-### Spring Boot ###
-**/src/main/**/application-*.properties
-**/src/main/**/application-*.yml
-!**/src/main/**/application.properties
-!**/src/main/**/application.yml
-
-### Database files ###
+# Database files
 *.db
 *.sqlite
 *.h2.db
 *.trace.db
 *.lock.db
 
-### OS Specific ###
-# Mac
+# OS Specific
 .DS_Store
-
-# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-### Project Specific ###
-# Environment variables
+# Project Specific
 .env
 .env.local
 .env.prod
-
-# Uploaded files and images
-uploads/
-/media/
-microvolunteer-uploads/
-
-# Logs
-logs/
-*.log
 microvolunteer-*.log
 
-# Docker
+# Migration backup files
+*.sql.backup
+*.md.backup
+
+# Database dump files
+*.dump
+*.backup
+
+# Docker data
 .docker/data/
 
-# Configuration files with secrets
-application-local.properties
-application-dev.properties
-application-prod.properties
-application-secret.properties
-
-# Server-specific deployments
-/deploy/
-
-# Frontend build directory
-/src/main/resources/static/
-node_modules/
-
-# Test coverage reports
-/coverage/
-*.lcov
-.nyc_output/
+# Configuration files with secrets (keep only main application.yml and docker variant)
+application-local.yml
+application-dev.yml
+application-prod.yml
+application-secret.yml

@@ -3,31 +3,31 @@ spring:
     name: microvolunteer
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/microvolunteer_dev
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/microvolunteer}
     username: ${DB_USERNAME:microvolunteer}
-    password: ${DB_PASSWORD:password}
+    password: ${DB_PASSWORD:secure_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-    show-sql: false
+    show-sql: ${SHOW_SQL:false}
 
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: true
     locations: classpath:db/migration
 
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 # Keycloak конфігурація
 keycloak:
-  realm: microvolunteer
+  realm: ${KEYCLOAK_REALM:microvolunteer}
   auth-server-url: ${KEYCLOAK_URL:http://localhost:8080}
   admin:
     username: ${KEYCLOAK_ADMIN_USERNAME:admin}
@@ -39,26 +39,29 @@ app:
     secret: ${JWT_SECRET:microvolunteer-secret-key-that-should-be-at-least-256-bits-long-for-security}
     expiration: ${JWT_EXPIRATION:86400000} # 24 hours
 
-  # File upload
-  upload:
-    dir: ${UPLOAD_DIR:uploads}
-
-# Swagger конфігурація
+# Swagger конфигурація
 springdoc:
   api-docs:
-    path: /api-docs
+    enabled: true
+    path: /v3/api-docs
   swagger-ui:
+    enabled: true
     path: /swagger-ui.html
     disable-swagger-default-url: true
+    urls:
+      - url: /v3/api-docs
+        name: Microvolunteer API
 
 # Логування
 logging:
   level:
-    com.microvolunteer: DEBUG
+    com.microvolunteer: ${LOG_LEVEL:INFO}
     org.springframework.security: INFO
     org.springframework.web: INFO
-    org.hibernate.SQL: INFO
-    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  file:
+    name: ${LOG_FILE:logs/microvolunteer.log}
 
 # Management endpoints
 management:
@@ -68,4 +71,4 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: ${HEALTH_DETAILS:when-authorized}

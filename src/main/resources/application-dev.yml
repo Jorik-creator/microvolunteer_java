@@ -1,57 +1,86 @@
 spring:
+  application:
+    name: microvolunteer-dev
+
+  # H2 база данных для разработки
   datasource:
-    url: jdbc:postgresql://localhost:5433/microvolunteer_dev
-    username: microvolunteer
-    password: password
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:microvolunteer_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
-    show-sql: true
+    show-sql: ${SHOW_SQL:true}
 
+  # Flyway отключен для dev профиля, используем DDL auto
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
+    enabled: false
 
-# Keycloak конфігурація для розробки
+server:
+  port: ${SERVER_PORT:8081}
+
+# Keycloak конфигурация для разработки (mock)
 keycloak:
-  realm: microvolunteer
-  auth-server-url: http://localhost:8082
+  realm: microvolunteer-dev
+  auth-server-url: http://localhost:8080
   admin:
     username: admin
     password: admin
 
-# JWT конфігурація для розробки
+# JWT конфигурация для разработки
 app:
   jwt:
-    secret: microvolunteer-dev-secret-key-that-should-be-at-least-256-bits-long-for-development
-    expiration: 86400000 # 24 hours
+    secret: microvolunteer-dev-secret-key-for-testing-purposes-only-not-for-production
+    expiration: ${JWT_EXPIRATION:86400000} # 24 hours
 
-  # File upload для розробки
-  upload:
-    dir: uploads
+# Swagger конфигурация для разработки
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    tryItOutEnabled: true
+    filter: true
+    displayRequestDuration: true
+    urls:
+      - url: /v3/api-docs
+        name: Microvolunteer API v1.0
 
-# Логування для розробки
+# Логирование для разработки
 logging:
   level:
     com.microvolunteer: DEBUG
-    org.springframework.security: INFO
+    org.springframework.security: DEBUG
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE:logs/microvolunteer-dev.log}
 
-# Management endpoints для розробки
+# Management endpoints для разработки
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,env,beans,mappings
   endpoint:
     health:
       show-details: always

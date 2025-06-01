@@ -93,7 +93,6 @@ services:
       KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-that-should-be-at-least-256-bits-long}
-      UPLOAD_DIR: /app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +101,6 @@ services:
     ports:
       - "${APP_PORT:-8081}:8081"
     volumes:
-      - app_uploads:/app/uploads
       - app_logs:/app/logs
     networks:
       - microvolunteer-network
@@ -114,28 +112,9 @@ services:
       retries: 3
       start_period: 90s
 
-  # Redis для кешування
-  redis:
-    image: redis:7.2-alpine
-    container_name: microvolunteer-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - microvolunteer-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
 volumes:
   postgres_data:
   keycloak_postgres_data:
-  redis_data:
-  app_uploads:
   app_logs:
 
 networks:

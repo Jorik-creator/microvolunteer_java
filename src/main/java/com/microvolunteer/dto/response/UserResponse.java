@@ -15,15 +15,12 @@ import java.time.LocalDateTime;
 public class UserResponse {
 
     private Long id;
-    private String username;
     private String email;
-    private String firstName;
-    private String lastName;
-    private UserType userType;
+    private String firstName;  // Виправлено з firstN
+    private String lastName;   // Виправлено з lastN
     private String phone;
-    private String bio;
-    private String address;
-    private String profileImage;
-    private LocalDateTime dateJoined;
-    private boolean isActive;
+    private UserType userType;
+    private Boolean isActive;
+    private LocalDateTime createdAt;
+    private LocalDateTime lastLoginAt;
 }

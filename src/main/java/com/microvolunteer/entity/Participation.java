@@ -1,41 +1,42 @@
 package com.microvolunteer.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "participations",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"task_id", "user_id"}))
-@Getter
-@Setter
+@Table(name = "participations")
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Participation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private Task task;
+    @Column(name = "joined_at", nullable = false)
+    private LocalDateTime joinedAt;
 
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    // Relationships
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @CreationTimestamp
-    @Column(name = "joined_at", updatable = false)
-    private LocalDateTime joinedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "task_id", nullable = false)
+    private Task task;
 
-    @Column(length = 20)
-    @Builder.Default
-    private String status = "ACTIVE";
-
-    @Column(columnDefinition = "TEXT")
-    private String feedback;
+    @PrePersist
+    protected void onCreate() {
+        joinedAt = LocalDateTime.now();
+    }
 }

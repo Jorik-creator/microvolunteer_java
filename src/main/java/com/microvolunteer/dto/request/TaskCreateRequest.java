@@ -29,16 +29,16 @@ public class TaskCreateRequest {
     @Size(max = 255, message = "Місце проведення не може перевищувати 255 символів")
     private String location;
 
-    @NotNull(message = "Дата початку є обов'язковою")
-    @Future(message = "Дата початку має бути в майбутньому")
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    private LocalDateTime startDate;
+    @Size(max = 500, message = "Необхідні навички не можуть перевищувати 500 символів")
+    private String requiredSkills;
 
+    @NotNull(message = "Час виконання є обов'язковим")
+    @Future(message = "Час виконання має бути в майбутньому")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    private LocalDateTime endDate;
+    private LocalDateTime scheduledAt;
 
-    @NotNull(message = "Кількість волонтерів є обов'язковою")
-    @Min(value = 1, message = "Кількість волонтерів має бути мінімум 1")
-    @Max(value = 100, message = "Кількість волонтерів не може перевищувати 100")
-    private Integer maxVolunteers;
+    @NotNull(message = "Кількість учасників є обов'язковою")
+    @Min(value = 1, message = "Кількість учасників має бути мінімум 1")
+    @Max(value = 100, message = "Кількість учасників не може перевищувати 100")
+    private Integer maxParticipants;
 }

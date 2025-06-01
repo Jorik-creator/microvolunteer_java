@@ -10,6 +10,5 @@ class MicrovolunteerApplicationTests {
 
     @Test
     void contextLoads() {
-        // Тест перевіряє, що контекст Spring Boot завантажується без помилок
     }
 }
