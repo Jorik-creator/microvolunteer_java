@@ -2,33 +2,30 @@ package com.microvolunteer.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 @Slf4j
 @Service
 public class JwtService {
 
-    @Value("${app.jwt.secret:microvolunteer-secret-key-that-should-be-at-least-256-bits-long}")
+    @Value("${app.jwt.secret}")
     private String secretKey;
 
-    @Value("${app.jwt.expiration:86400000}") // 24 hours
-    private Long jwtExpiration;
+    @Value("${app.jwt.expiration}")
+    private long jwtExpiration;
 
-    public String extractKeycloakId(String token) {
+    public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
-    }
-
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -36,53 +33,62 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(String keycloakId, String username, String email) {
-        return Jwts.builder()
-                .subject(keycloakId)
-                .claim("username", username)
-                .claim("email", email)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(getSignInKey())
+    public String generateToken(UserDetails userDetails) {
+        return generateToken(new HashMap<>(), userDetails);
+    }
+
+    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        return buildToken(extraClaims, userDetails, jwtExpiration);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(new HashMap<>(), userDetails, jwtExpiration * 7); // 7x довше для refresh token
+    }
+
+    private String buildToken(
+            Map<String, Object> extraClaims,
+            UserDetails userDetails,
+            long expiration
+    ) {
+        return Jwts
+                .builder()
+                .claims(extraClaims)  // Оновлено метод
+                .subject(userDetails.getUsername())  // Оновлено метод
+                .issuedAt(new Date(System.currentTimeMillis()))  // Оновлено метод
+                .expiration(new Date(System.currentTimeMillis() + expiration))  // Оновлено метод
+                .signWith(getSignInKey())  // Видалено алгоритм - він визначається автоматично
                 .compact();
     }
 
-    public boolean isTokenValid(String token) {
-        try {
-            return !isTokenExpired(token);
-        } catch (MalformedJwtException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
-            return false;
-        } catch (Exception e) {
-            log.error("JWT token validation error: {}", e.getMessage());
-            return false;
-        }
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSignInKey())
+        return Jwts
+                .parser()  // Оновлено з parserBuilder
+                .verifyWith(getSignInKey())  // Оновлено метод
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseSignedClaims(token)  // Оновлено метод
+                .getPayload();  // Оновлено метод
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        // Забезпечуємо мінімальну довжину ключа для HMAC-SHA256 (256 біт = 32 байти)
+        String key = secretKey;
+        if (key.length() < 32) {
+            key = key + "0".repeat(32 - key.length()); // Доповнюємо нулями до мінімальної довжини
+        }
+        byte[] keyBytes = key.getBytes();
         return Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    public String extractUsername(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("username", String.class);
-    }
-
-    public String extractEmail(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("email", String.class);
     }
 }

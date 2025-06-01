@@ -24,12 +24,4 @@ public class CategoryCreateRequest {
     @Size(max = 500, message = "Опис не може перевищувати 500 символів")
     @Schema(description = "Опис категорії", example = "Допомога в навчанні та освітні проекти")
     private String description;
-    
-    @Size(max = 50)
-    @Schema(description = "Іконка категорії", example = "education")
-    private String icon;
-    
-    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Колір має бути у форматі HEX (#RRGGBB)")
-    @Schema(description = "Колір категорії в HEX форматі", example = "#4CAF50")
-    private String color;
 }

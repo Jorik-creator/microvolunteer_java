@@ -3,15 +3,9 @@ package com.microvolunteer.mapper;
 import com.microvolunteer.dto.request.TaskCreateRequest;
 import com.microvolunteer.dto.response.TaskResponse;
 import com.microvolunteer.entity.Task;
-import com.microvolunteer.entity.TaskImage;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-import org.mapstruct.Named;
-
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring", uses = {UserMapper.class, CategoryMapper.class})
 public interface TaskMapper {
@@ -22,21 +16,14 @@ public interface TaskMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "status", constant = "OPEN")
-    @Mapping(target = "images", ignore = true)
-    @Mapping(target = "participants", ignore = true)
-    @Mapping(target = "maxVolunteers", source = "maxVolunteers")
-    @Mapping(target = "currentVolunteers", constant = "0")
-    @Mapping(target = "deadline", source = "endDate")
-    @Mapping(target = "duration", ignore = true)
+    @Mapping(target = "participations", ignore = true)
     Task toEntity(TaskCreateRequest request);
 
-    @Mapping(target = "currentVolunteers", expression = "java(task.getCurrentVolunteers())")
-    @Mapping(target = "availableSpots", expression = "java(task.getMaxVolunteers() - task.getCurrentVolunteers())")
-    @Mapping(target = "pastDue", expression = "java(task.getDeadline() != null && task.getDeadline().isBefore(java.time.LocalDateTime.now()))")
-    @Mapping(target = "images", source = "images", qualifiedByName = "imagesToUrls")
-    @Mapping(target = "canJoin", ignore = true)
-    @Mapping(target = "participant", ignore = true)
-    @Mapping(target = "status", expression = "java(task.getStatus().name())")
+    @Mapping(target = "creatorName", expression = "java(task.getCreator().getFirstName() + \" \" + task.getCreator().getLastName())")
+    @Mapping(target = "categoryName", source = "category.name")
+    @Mapping(target = "participantCount", expression = "java(task.getParticipations() != null ? task.getParticipations().size() : 0)")
+    @Mapping(target = "creator", source = "creator")
+    @Mapping(target = "category", source = "category")
     TaskResponse toResponse(Task task);
 
     @Mapping(target = "id", ignore = true)
@@ -45,18 +32,6 @@ public interface TaskMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "images", ignore = true)
-    @Mapping(target = "participants", ignore = true)
-    @Mapping(target = "maxVolunteers", source = "maxVolunteers")
-    @Mapping(target = "currentVolunteers", ignore = true)
-    @Mapping(target = "deadline", source = "endDate")
-    @Mapping(target = "duration", ignore = true)
+    @Mapping(target = "participations", ignore = true)
     void updateEntityFromRequest(TaskCreateRequest request, @MappingTarget Task task);
-
-    @Named("imagesToUrls")
-    default List<String> imagesToUrls(Set<TaskImage> images) {
-        return images.stream()
-                .map(TaskImage::getImageUrl)
-                .collect(Collectors.toList());
-    }
 }

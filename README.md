@@ -1,226 +1,92 @@
-# Microvolunteer - Платформа для волонтерських завдань
+# 🤝 Microvolunteer Platform
 
-Платформа для з'єднання вразливих людей з волонтерами для виконання різноманітних завдань.
-
-## ✅ Стан проекту
-
-**ВИПРАВЛЕНІ ПРОБЛЕМИ:**
-- ✅ SecurityConfig - додано правильні endpoint-и 
-- ✅ TaskService - виправлено логіку підрахунку учасників
-- ✅ DTO та Mappers - виправлено назви полів
-- ✅ Repository - замінено MySQL функції на PostgreSQL
-- ✅ Docker - оновлено конфігурацію з правильними назвами контейнерів
-- ✅ Flyway - оновлено до версії 11.0.1 для підтримки PostgreSQL 16
-- ✅ Залежності - всі version conflicts виправлені
-
-## Технології
-
-- **Backend**: Spring Boot 3.4, Java 17, PostgreSQL 16, Flyway 11
-- **Безпека**: Keycloak 26.0.7, JWT
-- **Документація**: Swagger/OpenAPI 2.7.0
-- **Контейнеризація**: Docker, Docker Compose
-- **Збірка**: Maven
-- **Тестування**: JUnit 5, Testcontainers
+Платформа для з'єднання волонтерів та людей, які потребують допомоги.
 
 ## 🚀 Швидкий старт
 
-### Перевірка працездатності
+### 1. Запуск для розробки
 
 ```bash
-# Швидка перевірка (Windows)
-quick-test.bat
-
-# Швидка перевірка (Linux/Mac)
-chmod +x quick-test.sh
-./quick-test.sh
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-### Розробка
+### 2. Доступ до API
 
-1. **Запуск інфраструктури**
-   ```bash
-   docker-compose -f docker-compose.dev.yml up -d
-   ```
+**🌐 Swagger UI:** http://localhost:8081/swagger-ui.html
 
-2. **Перевірка статусу**
-   ```bash
-   docker ps
-   # Всі контейнери повинні бути в статусі "Up"
-   ```
+**📚 API Documentation:** http://localhost:8081/v3/api-docs
 
-3. **Запуск додатку**
-   ```bash
-   # Windows
-   run-dev.bat
-   
-   # Linux/Mac
-   chmod +x run-dev.sh
-   ./run-dev.sh
-   ```
+**💾 H2 Console (dev режим):** http://localhost:8081/h2-console
+- JDBC URL: `jdbc:h2:mem:microvolunteer_dev`
+- Username: `sa`
+- Password: (пустий)
 
-### Продакшен
+## 📋 API Endpoints
 
-1. **Налаштування змінних оточення**
-   ```bash
-   cp .env.example .env
-   # Відредагуйте .env файл зі своїми налаштуваннями
-   ```
+### 🔐 Authentication
+- `POST /api/auth/register` - Регистрация пользователя
+- `GET /api/auth/health` - Проверка auth сервиса
 
-2. **Запуск всього стеку**
-   ```bash
-   docker-compose up -d
-   ```
+### 👤 Users
+- `GET /api/users` - Список пользователей
+- `GET /api/users/{id}` - Пользователь по ID
+- `PUT /api/users/{id}` - Обновление пользователя
 
-## 🌐 Доступ до сервісів
+### 📋 Tasks
+- `GET /api/tasks` - Все задания
+- `POST /api/tasks` - Создать задание
+- `GET /api/tasks/search` - Поиск заданий
+- `GET /api/tasks/{id}` - Задание по ID
+- `PUT /api/tasks/{id}` - Обновить задание
+- `DELETE /api/tasks/{id}` - Удалить задание
+- `PUT /api/tasks/{id}/complete` - Завершить задание
 
-### Розробка
-- **Додаток**: http://localhost:8081
-- **Swagger UI**: http://localhost:8081/swagger-ui.html
-- **Keycloak Admin**: http://localhost:8082 (admin/admin)
-- **PostgreSQL**: localhost:5433 (microvolunteer/password)
+### 🏷️ Categories
+- `GET /api/categories` - Все категории
+- `GET /api/categories/active` - Активные категории
+- `POST /api/categories` - Создать категорию (Admin)
 
-### Продакшен
-- **Додаток**: http://localhost:8081
-- **Swagger UI**: http://localhost:8081/swagger-ui.html
-- **Keycloak Admin**: http://localhost:8080
-- **PostgreSQL**: localhost:5432
+### 🤝 Participations
+- `POST /api/participations/join` - Присоединиться к заданию
+- `DELETE /api/participations/leave` - Покинуть задание
+- `GET /api/participations/task/{id}` - Участники задания
+- `GET /api/participations/user/{id}` - Участие пользователя
 
-## 📚 API Документація
-
-API документація доступна за адресою `/swagger-ui.html` після запуску додатку.
-
-### Основні endpoint-и
-
-#### Аутентифікація
-- `POST /api/auth/register` - Реєстрація
-- `POST /api/auth/sync` - Синхронізація з Keycloak
-- `POST /api/auth/token` - Генерація JWT токена ✅
-
-#### Завдання
-- `GET /api/tasks/list` - Список завдань
-- `GET /api/tasks/{id}` - Деталі завдання
-- `POST /api/tasks` - Створення завдання
-- `PUT /api/tasks/{id}` - Оновлення завдання
-- `POST /api/tasks/{id}/join` - Приєднання до завдання ✅
-- `POST /api/tasks/{id}/leave` - Відмова від участі ✅
-- `POST /api/tasks/{id}/complete` - Завершення завдання
-
-#### Категорії
-- `GET /api/categories` - Список категорій
-- `POST /api/categories` - Створення категорії
-
-## 🧪 Тестування
+## 🐳 Docker запуск
 
 ```bash
-# Unit тести
-./mvnw test
-
-# Компіляція без тестів
-./mvnw clean compile -DskipTests
-
-# Повна збірка
-./mvnw clean install
+docker-compose up -d
 ```
 
 ## 🗄️ База даних
 
-Проект використовує Flyway для міграцій. Файли міграцій знаходяться в `src/main/resources/db/migration/`.
+### Миграції Flyway
+- `V1__Initial_schema.sql` - Початкова схема
+- `V2__insert_test_data.sql` - Тестові дані
 
-### Основні таблиці:
-- `users` - Користувачі
-- `tasks` - Завдання ✅
-- `categories` - Категорії
-- `participations` - Участь у завданнях ✅
-- `task_images` - Зображення завдань
-
-## ⚙️ Конфігурація
+## 🔧 Конфігурація
 
 ### Профілі Spring
-- `default` - Локальна розробка
-- `dev` - Розробка з зовнішніми сервісами ✅
-- `docker` - Контейнеризоване середовище ✅
-- `test` - Тестування
+- **dev** - H2 база, детальні логи, Swagger включений
+- **docker** - PostgreSQL, оптимізовані налаштування
+- **test** - H2 in-memory для тестів
 
-### Змінні оточення
-Див. `.env.example` для повного списку доступних змінних.
+## 🧪 Тестування
 
-## 🐳 Docker
-
-### Контейнери для розробки:
-- `microvolunteer-postgres-dev` - PostgreSQL 16
-- `microvolunteer-keycloak-dev` - Keycloak 26.0.7  
-- `microvolunteer-keycloak-postgres-dev` - БД для Keycloak
-- `microvolunteer-redis-dev` - Redis для кешування
-
-### Контейнери для продакшену:
-- `microvolunteer-springboot` - Spring Boot додаток ✅
-- `microvolunteer-postgres` - PostgreSQL
-- `microvolunteer-keycloak` - Keycloak
-- `microvolunteer-keycloak-postgres` - БД для Keycloak
-- `microvolunteer-redis` - Redis
-
-## 🔧 Розробка
-
-### Структура проекту
-```
-src/
-├── main/
-│   ├── java/com/microvolunteer/
-│   │   ├── config/          # Конфігурація Spring ✅
-│   │   ├── controller/      # REST контролери ✅
-│   │   ├── dto/            # DTO класи ✅
-│   │   ├── entity/         # JPA сутності ✅
-│   │   ├── enums/          # Енумерації
-│   │   ├── exception/      # Обробка помилок ✅
-│   │   ├── mapper/         # MapStruct мапери ✅
-│   │   ├── repository/     # Spring Data репозиторії ✅
-│   │   └── service/        # Бізнес логіка ✅
-│   └── resources/
-│       ├── db/migration/   # Flyway міграції ✅
-│       └── application*.yml # Конфігурація ✅
-└── test/                   # Тести
+```bash
+./mvnw test
 ```
 
-### Виправлені проблеми
-1. **TaskService** - правильний підрахунок `currentVolunteers`
-2. **Repository** - PostgreSQL-сумісні SQL запити
-3. **Security** - правильна конфігурація endpoint-ів
-4. **Docker** - унікальні назви контейнерів
-5. **DTO** - консистентні назви полів (`maxVolunteers`)
+## 🛠️ Технології
 
-## 📊 Моніторинг
-
-Додаток надає Actuator endpoints для моніторингу:
-- `/actuator/health` - Статус здоров'я
-- `/actuator/info` - Інформація про додаток
-- `/actuator/metrics` - Метрики
-
-## ⚠️ Важливі нотатки
-
-1. **Keycloak** налаштований для розробки з admin/admin
-2. **PostgreSQL** використовує порт 5433 для розробки
-3. **JWT токени** мають термін дії 24 години
-4. **Flyway** використовує версію 11.0.1 для підтримки PostgreSQL 16
-
-## 🚧 Наступні кроки
-
-1. ✅ Підготовка бази даних
-2. ✅ Spring Boot Application  
-3. ✅ Написання контролерів
-4. ✅ Написання сервісів
-5. ✅ Підключення Keycloak
-6. ✅ Підключення Swagger UI
-7. ✅ Збірка в Docker контейнери
-8. 🔄 **Написання Unit тестів**
-9. 🔄 **Написання інтеграційних автотестів**
-
-## 💡 Поради для розробки
-
-- Використовуйте `quick-test.bat/sh` для швидкої перевірки
-- Перевіряйте логи контейнерів: `docker logs microvolunteer-postgres-dev`
-- Використовуйте Swagger UI для тестування API
-- Keycloak admin panel доступний на http://localhost:8082
-
-## 📄 Ліцензія
-
-MIT License
+- **Spring Boot 3.4.4** - Основний фреймворк
+- **Spring Security** - Безпека та JWT
+- **Spring Data JPA** - ORM та робота з БД
+- **PostgreSQL** - Основна БД (продакшн)
+- **H2** - БД для розробки та тестів
+- **Flyway** - Міграції БД
+- **Keycloak** - Управління користувачами
+- **Swagger/OpenAPI 3** - Документація API
+- **MapStruct** - Мапінг об'єктів
+- **Docker** - Контейнеризація
+- **Maven** - Збірка проекту

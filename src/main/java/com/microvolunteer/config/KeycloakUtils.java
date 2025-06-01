@@ -1,51 +1,112 @@
 package com.microvolunteer.config;
 
-import com.microvolunteer.service.JwtService;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Optional;
+import java.util.Arrays;
 
+@Slf4j
 @Component
-@RequiredArgsConstructor
 public class KeycloakUtils {
 
-    private final JwtService jwtService;
+    @Value("${keycloak.auth-server-url}")
+    private String keycloakServerUrl;
 
-    public Optional<String> getCurrentUserKeycloakId() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
+    @Value("${keycloak.realm}")
+    private String realm;
 
-        if (authentication != null && authentication.getPrincipal() instanceof String) {
-            return Optional.of((String) authentication.getPrincipal());
-        }
+    @Value("${keycloak.admin.username}")
+    private String adminUsername;
 
-        return Optional.empty();
-    }
+    @Value("${keycloak.admin.password}")
+    private String adminPassword;
 
-    public Optional<String> getCurrentUserEmail() {
-        return getCurrentTokenFromRequest()
-                .map(jwtService::extractEmail);
-    }
+    public String createUser(String email, String password, String firstName, String lastName) {
+        log.info("Creating user in Keycloak: {}", email);
+        
+        try {
+            Keycloak keycloak = KeycloakBuilder.builder()
+                    .serverUrl(keycloakServerUrl)
+                    .realm("master")
+                    .username(adminUsername)
+                    .password(adminPassword)
+                    .clientId("admin-cli")
+                    .build();
 
-    public Optional<String> getCurrentUsername() {
-        return getCurrentTokenFromRequest()
-                .map(jwtService::extractUsername);
-    }
+            UserRepresentation user = new UserRepresentation();
+            user.setUsername(email);
+            user.setEmail(email);
+            user.setFirstName(firstName);
+            user.setLastName(lastName);
+            user.setEnabled(true);
+            user.setEmailVerified(true);
 
-    private Optional<String> getCurrentTokenFromRequest() {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            HttpServletRequest request = attributes.getRequest();
-            String authHeader = request.getHeader("Authorization");
+            CredentialRepresentation passwordCred = new CredentialRepresentation();
+            passwordCred.setTemporary(false);
+            passwordCred.setType(CredentialRepresentation.PASSWORD);
+            passwordCred.setValue(password);
+            user.setCredentials(Arrays.asList(passwordCred));
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                return Optional.of(authHeader.substring(7));
+            var response = keycloak.realm(realm).users().create(user);
+            
+            if (response.getStatus() == 201) {
+                String userId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
+                log.info("User created successfully in Keycloak with ID: {}", userId);
+                return userId;
+            } else {
+                throw new RuntimeException("Failed to create user in Keycloak: " + response.getStatus());
             }
+        } catch (Exception e) {
+            log.error("Error creating user in Keycloak", e);
+            throw new RuntimeException("Failed to create user in Keycloak", e);
         }
-        return Optional.empty();
+    }
+
+    public UserInfo getUserInfo(String keycloakUserId) {
+        try {
+            Keycloak keycloak = KeycloakBuilder.builder()
+                    .serverUrl(keycloakServerUrl)
+                    .realm("master")
+                    .username(adminUsername)
+                    .password(adminPassword)
+                    .clientId("admin-cli")
+                    .build();
+
+            UserRepresentation user = keycloak.realm(realm).users().get(keycloakUserId).toRepresentation();
+            
+            return UserInfo.builder()
+                    .id(user.getId())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .enabled(user.isEnabled())
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting user info from Keycloak", e);
+            throw new RuntimeException("Failed to get user info from Keycloak", e);
+        }
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserInfo {
+        private String id;
+        private String username;
+        private String email;
+        private String firstName;
+        private String lastName;
+        private Boolean enabled;
     }
 }

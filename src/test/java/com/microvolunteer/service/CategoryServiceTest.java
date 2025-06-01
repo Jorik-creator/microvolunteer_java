@@ -4,22 +4,20 @@ import com.microvolunteer.dto.response.CategoryResponse;
 import com.microvolunteer.entity.Category;
 import com.microvolunteer.mapper.CategoryMapper;
 import com.microvolunteer.repository.CategoryRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тести для CategoryService")
 class CategoryServiceTest {
 
     @Mock
@@ -31,75 +29,98 @@ class CategoryServiceTest {
     @InjectMocks
     private CategoryService categoryService;
 
-    private Category testCategory1;
-    private Category testCategory2;
-    private CategoryResponse testCategoryResponse1;
-    private CategoryResponse testCategoryResponse2;
-
-    @BeforeEach
-    void setUp() {
-        testCategory1 = Category.builder()
-                .id(1L)
-                .name("Допомога з покупками")
-                .description("Допомога з покупками продуктів")
-                .build();
-
-        testCategory2 = Category.builder()
-                .id(2L)
-                .name("Транспорт")
-                .description("Допомога з транспортуванням")
-                .build();
-
-        testCategoryResponse1 = CategoryResponse.builder()
-                .id(1L)
-                .name("Допомога з покупками")
-                .description("Допомога з покупками продуктів")
-                .build();
-
-        testCategoryResponse2 = CategoryResponse.builder()
-                .id(2L)
-                .name("Транспорт")
-                .description("Допомога з транспортуванням")
-                .build();
-    }
-
     @Test
-    @DisplayName("Отримання всіх категорій - успішно")
-    void getAllCategories_Success() {
+    void getAllCategories_ShouldReturnListOfCategoryResponses() {
         // Given
-        List<Category> categories = Arrays.asList(testCategory1, testCategory2);
-        when(categoryRepository.findAll()).thenReturn(categories);
-        when(categoryMapper.toResponse(testCategory1)).thenReturn(testCategoryResponse1);
-        when(categoryMapper.toResponse(testCategory2)).thenReturn(testCategoryResponse2);
+        Category category = createTestCategory();
+        CategoryResponse categoryResponse = createTestCategoryResponse();
+        
+        when(categoryRepository.findAll()).thenReturn(List.of(category));
+        when(categoryMapper.toResponse(category)).thenReturn(categoryResponse);
 
         // When
         List<CategoryResponse> result = categoryService.getAllCategories();
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getName()).isEqualTo("Допомога з покупками");
-        assertThat(result.get(1).getName()).isEqualTo("Транспорт");
-
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(categoryResponse, result.get(0));
         verify(categoryRepository).findAll();
-        verify(categoryMapper).toResponse(testCategory1);
-        verify(categoryMapper).toResponse(testCategory2);
+        verify(categoryMapper).toResponse(category);
     }
 
     @Test
-    @DisplayName("Отримання всіх категорій - порожній список")
-    void getAllCategories_EmptyList() {
+    void getCategoryById_WhenCategoryExists_ShouldReturnCategoryResponse() {
         // Given
-        when(categoryRepository.findAll()).thenReturn(Arrays.asList());
+        Long categoryId = 1L;
+        Category category = createTestCategory();
+        CategoryResponse categoryResponse = createTestCategoryResponse();
+        
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(categoryMapper.toResponse(category)).thenReturn(categoryResponse);
 
         // When
-        List<CategoryResponse> result = categoryService.getAllCategories();
+        CategoryResponse result = categoryService.getCategoryById(categoryId);
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result).isEmpty();
+        assertNotNull(result);
+        assertEquals(categoryResponse, result);
+        verify(categoryRepository).findById(categoryId);
+        verify(categoryMapper).toResponse(category);
+    }
 
-        verify(categoryRepository).findAll();
+    @Test
+    void getCategoryById_WhenCategoryDoesNotExist_ShouldThrowException() {
+        // Given
+        Long categoryId = 1L;
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(com.microvolunteer.exception.BusinessException.class, 
+                    () -> categoryService.getCategoryById(categoryId));
+        
+        verify(categoryRepository).findById(categoryId);
         verifyNoInteractions(categoryMapper);
+    }
+
+    @Test
+    void getActiveCategories_ShouldReturnOnlyActiveCategories() {
+        // Given
+        Category category = createTestCategory();
+        CategoryResponse categoryResponse = createTestCategoryResponse();
+        
+        when(categoryRepository.findByIsActiveTrue()).thenReturn(List.of(category));
+        when(categoryMapper.toResponse(category)).thenReturn(categoryResponse);
+
+        // When
+        List<CategoryResponse> result = categoryService.getActiveCategories();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(categoryResponse, result.get(0));
+        verify(categoryRepository).findByIsActiveTrue();
+        verify(categoryMapper).toResponse(category);
+    }
+
+    private Category createTestCategory() {
+        return Category.builder()
+                .id(1L)
+                .name("Test Category")
+                .description("Test Description")
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    private CategoryResponse createTestCategoryResponse() {
+        return CategoryResponse.builder()
+                .id(1L)
+                .name("Test Category")
+                .description("Test Description")
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 }

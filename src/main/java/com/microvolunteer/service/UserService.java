@@ -2,7 +2,6 @@ package com.microvolunteer.service;
 
 import com.microvolunteer.dto.response.UserResponse;
 import com.microvolunteer.entity.User;
-import com.microvolunteer.enums.TaskStatus;
 import com.microvolunteer.enums.UserType;
 import com.microvolunteer.exception.BusinessException;
 import com.microvolunteer.mapper.UserMapper;
@@ -18,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -25,120 +25,166 @@ import java.util.Map;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final TaskRepository taskRepository;
     private final ParticipationRepository participationRepository;
-    private final UserMapper userMapper;
 
-    @Transactional(readOnly = true)
+    public List<UserResponse> getAllUsers() {
+        log.info("Fetching all users");
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .map(userMapper::toResponse)
+                .toList();
+    }
+
     public UserResponse getUserById(Long id) {
-        log.info("Отримання користувача з ID: {}", id);
-
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        return userMapper.toResponse(user);
+        log.info("Fetching user with ID: {}", id);
+        return userRepository.findById(id)
+                .map(userMapper::toResponse)
+                .orElseThrow(() -> new BusinessException("User not found with id: " + id));
     }
 
-    @Transactional(readOnly = true)
+
+
     public UserResponse getUserByKeycloakId(String keycloakId) {
-        log.info("Отримання користувача з Keycloak ID: {}", keycloakId);
-
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        return userMapper.toResponse(user);
+        log.info("Fetching user with Keycloak ID: {}", keycloakId);
+        return userRepository.findByKeycloakId(keycloakId)
+                .map(userMapper::toResponse)
+                .orElseThrow(() -> new BusinessException("User not found with keycloak id: " + keycloakId));
     }
 
-    @Transactional(readOnly = true)
+
+
+
+
+    public List<UserResponse> getActiveUsers() {
+        log.info("Fetching active users");
+        List<User> users = userRepository.findByIsActiveTrue();
+        return users.stream()
+                .map(userMapper::toResponse)
+                .toList();
+    }
+
+
+
     public Map<String, Object> getUserStatistics(Long userId) {
-        log.info("Отримання статистики для користувача: {}", userId);
-
+        log.info("Fetching statistics for user: {}", userId);
+        
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
+                .orElseThrow(() -> new BusinessException("User not found with id: " + userId));
+        
         Map<String, Object> statistics = new HashMap<>();
-        statistics.put("userId", user.getId());
-        statistics.put("username", user.getUsername());
+        
+        // Кількість створених завдань
+        int createdTasks = taskRepository.findByCreatorId(userId).size();
+        statistics.put("createdTasks", createdTasks);
+        
+        // Кількість участей у завданнях
+        int participations = participationRepository.findByUserId(userId).size();
+        statistics.put("participations", participations);
+        
+        // Загальна активність
+        statistics.put("totalActivity", createdTasks + participations);
+        
+        // Дата реєстрації
+        statistics.put("memberSince", user.getCreatedAt());
+        
+        // Останній вхід
+        statistics.put("lastLogin", user.getLastLoginAt());
+        
+        // Тип користувача
         statistics.put("userType", user.getUserType());
-        statistics.put("dateJoined", user.getDateJoined());
-        statistics.put("daysAsMember",
-                java.time.Duration.between(user.getDateJoined(), LocalDateTime.now()).toDays());
-
-        if (user.getUserType() == UserType.VOLUNTEER) {
-            // Статистика для волонтера
-            long totalParticipations = participationRepository.countByUserId(userId);
-            long completedTasks = participationRepository.countByUserIdAndTaskStatus(userId, TaskStatus.COMPLETED);
-            long hoursHelped = participationRepository.calculateTotalHoursForUser(userId);
-            long categoriesHelped = participationRepository.countDistinctCategoriesByUserId(userId);
-
-            statistics.put("totalParticipations", totalParticipations);
-            statistics.put("completedTasks", completedTasks);
-            statistics.put("totalHoursHelped", hoursHelped);
-            statistics.put("categoriesHelped", categoriesHelped);
-
-            // Активність за останні 6 місяців
-            Map<String, Long> monthlyActivity = participationRepository
-                    .getMonthlyActivityForUser(userId, LocalDateTime.now().minusMonths(6));
-            statistics.put("monthlyActivity", monthlyActivity);
-
-        } else {
-            // Статистика для вразливої людини
-            long totalCreatedTasks = taskRepository.countByCreatorId(userId);
-            long completedTasks = taskRepository.countByCreatorIdAndStatus(userId, TaskStatus.COMPLETED);
-            long cancelledTasks = taskRepository.countByCreatorIdAndStatus(userId, TaskStatus.CANCELLED);
-            long totalVolunteersHelped = userRepository.countVolunteersHelpedByUserId(userId);
-
-            statistics.put("totalCreatedTasks", totalCreatedTasks);
-            statistics.put("completedTasks", completedTasks);
-            statistics.put("cancelledTasks", cancelledTasks);
-            statistics.put("totalVolunteersHelped", totalVolunteersHelped);
-
-            // Статистика за категоріями - конвертуємо List<Object[]> в Map
-            List<Object[]> categoryResults = taskRepository.findTasksByCategoryForUser(userId);
-            Map<String, Long> tasksByCategory = new HashMap<>();
-
-            for (Object[] result : categoryResults) {
-                String categoryName = (String) result[0];
-                Long count = ((Number) result[1]).longValue();
-                tasksByCategory.put(categoryName, count);
-            }
-
-            statistics.put("tasksByCategory", tasksByCategory);
-        }
-
+        
         return statistics;
     }
 
     @Transactional
     public UserResponse updateProfile(String keycloakId, Map<String, String> updates) {
-        log.info("Оновлення профілю для користувача: {}", keycloakId);
-
+        log.info("Updating profile for user with Keycloak ID: {}", keycloakId);
+        
         User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        // Оновлення дозволених полів
+                .orElseThrow(() -> new BusinessException("User not found with keycloak id: " + keycloakId));
+        
+        // Оновлення полів з валідацією
         if (updates.containsKey("firstName")) {
-            user.setFirstName(updates.get("firstName"));
+            String firstName = updates.get("firstName");
+            if (firstName == null || firstName.trim().isEmpty()) {
+                throw new BusinessException("First name cannot be empty");
+            }
+            user.setFirstName(firstName.trim());
         }
+        
         if (updates.containsKey("lastName")) {
-            user.setLastName(updates.get("lastName"));
+            String lastName = updates.get("lastName");
+            if (lastName == null || lastName.trim().isEmpty()) {
+                throw new BusinessException("Last name cannot be empty");
+            }
+            user.setLastName(lastName.trim());
         }
-        if (updates.containsKey("phone")) {
-            user.setPhone(updates.get("phone"));
-        }
-        if (updates.containsKey("bio")) {
-            user.setBio(updates.get("bio"));
-        }
-        if (updates.containsKey("address")) {
-            user.setAddress(updates.get("address"));
-        }
-        if (updates.containsKey("profileImage")) {
-            user.setProfileImage(updates.get("profileImage"));
-        }
+        
 
-        User updatedUser = userRepository.save(user);
-        log.info("Профіль користувача {} успішно оновлено", user.getUsername());
+        
+        if (updates.containsKey("email")) {
+            String email = updates.get("email");
+            if (email != null && !email.equals(user.getEmail())) {
+                if (!isValidEmail(email)) {
+                    throw new BusinessException("Invalid email format");
+                }
+                if (userRepository.findByEmail(email).isPresent()) {
+                    throw new BusinessException("Email already exists");
+                }
+                user.setEmail(email);
+            }
+        }
+        
+        user.setUpdatedAt(LocalDateTime.now());
+        User savedUser = userRepository.save(user);
+        
+        return userMapper.toResponse(savedUser);
+    }
 
-        return userMapper.toResponse(updatedUser);
+
+
+
+
+    @Transactional
+    public boolean deactivateUser(Long id) {
+        log.info("Deactivating user with ID: {}", id);
+        
+        return userRepository.findById(id)
+                .map(user -> {
+                    validateUserDeactivation(user);
+                    
+                    user.setIsActive(false);
+                    user.setUpdatedAt(LocalDateTime.now());
+                    userRepository.save(user);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    @Transactional
+    public void updateLastLogin(Long userId) {
+        userRepository.findById(userId)
+                .ifPresent(user -> {
+                    user.setLastLoginAt(LocalDateTime.now());
+                    userRepository.save(user);
+                });
+    }
+
+
+
+
+
+    private void validateUserDeactivation(User user) {
+        if (!user.getIsActive()) {
+            throw new BusinessException("User is already inactive");
+        }
+        
+        // Тут можна додати перевірку чи користувач не має активних завдань/участі
+    }
+
+    private boolean isValidEmail(String email) {
+        return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     }
 }

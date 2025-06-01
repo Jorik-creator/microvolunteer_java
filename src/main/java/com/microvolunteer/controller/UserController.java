@@ -1,6 +1,7 @@
 package com.microvolunteer.controller;
 
 import com.microvolunteer.dto.response.UserResponse;
+import com.microvolunteer.exception.BusinessException;
 import com.microvolunteer.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -71,6 +72,7 @@ public class UserController {
     @Operation(summary = "Оновити профіль поточного користувача")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Профіль успішно оновлено"),
+            @ApiResponse(responseCode = "400", description = "Невірні дані"),
             @ApiResponse(responseCode = "401", description = "Неавторизований доступ"),
             @ApiResponse(responseCode = "404", description = "Користувача не знайдено")
     })
@@ -81,5 +83,45 @@ public class UserController {
         log.info("Оновлення профілю для користувача: {}", keycloakId);
         UserResponse response = userService.updateProfile(keycloakId, updates);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Отримати всіх користувачів (тільки для адміністраторів)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список користувачів отримано"),
+            @ApiResponse(responseCode = "403", description = "Доступ заборонено")
+    })
+    public ResponseEntity<java.util.List<UserResponse>> getAllUsers() {
+        log.info("Отримання всіх користувачів");
+        java.util.List<UserResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/active")
+    @Operation(summary = "Отримати активних користувачів")
+    public ResponseEntity<java.util.List<UserResponse>> getActiveUsers() {
+        log.info("Отримання активних користувачів");
+        java.util.List<UserResponse> users = userService.getActiveUsers();
+        return ResponseEntity.ok(users);
+    }
+
+    @PutMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Деактивувати користувача (тільки для адміністраторів)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Користувача деактивовано"),
+            @ApiResponse(responseCode = "404", description = "Користувача не знайдено"),
+            @ApiResponse(responseCode = "403", description = "Доступ заборонено")
+    })
+    public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
+        log.info("Деактивація користувача з ID: {}", id);
+        boolean success = userService.deactivateUser(id);
+        
+        if (success) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

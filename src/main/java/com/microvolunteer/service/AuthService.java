@@ -1,24 +1,20 @@
 package com.microvolunteer.service;
 
+import com.microvolunteer.config.KeycloakUtils;
 import com.microvolunteer.dto.request.UserRegistrationRequest;
 import com.microvolunteer.dto.response.UserResponse;
 import com.microvolunteer.entity.User;
+import com.microvolunteer.enums.UserType;
 import com.microvolunteer.exception.BusinessException;
 import com.microvolunteer.mapper.UserMapper;
 import com.microvolunteer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.admin.client.Keycloak;
-import org.keycloak.admin.client.KeycloakBuilder;
-import org.keycloak.representations.idm.CredentialRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -26,127 +22,65 @@ import java.util.Collections;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final KeycloakUtils keycloakUtils;
     private final UserMapper userMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-
-    @Value("${keycloak.auth-server-url:http://localhost:8080}")
-    private String keycloakServerUrl;
-
-    @Value("${keycloak.realm:microvolunteer}")
-    private String realm;
-
-    @Value("${keycloak.admin.username:admin}")
-    private String adminUsername;
-
-    @Value("${keycloak.admin.password:admin}")
-    private String adminPassword;
 
     @Transactional
-    public UserResponse register(UserRegistrationRequest request) {
-        log.info("Реєстрація нового користувача: {}", request.getUsername());
+    public UserResponse registerUser(UserRegistrationRequest request) {
+        log.info("Registering new user with email: {}", request.getEmail());
 
-        // Перевірка унікальності username
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw BusinessException.conflict("Користувач з таким ім'ям вже існує");
+        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        if (existingUser.isPresent()) {
+            throw new BusinessException("User with email " + request.getEmail() + " already exists");
         }
 
-        // Перевірка унікальності email
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw BusinessException.conflict("Користувач з таким email вже існує");
-        }
+        String keycloakUserId = keycloakUtils.createUser(
+                request.getEmail(),
+                request.getPassword(),
+                request.getFirstName(),
+                request.getLastName()
+        );
 
-        // Створення користувача в Keycloak
-        String keycloakId = createKeycloakUser(request);
-
-        // Створення користувача в локальній БД
-        User user = userMapper.toEntity(request);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setKeycloakId(keycloakId);
+        User user = User.builder()
+                .keycloakId(keycloakUserId)
+                .email(request.getEmail())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .userType(UserType.VOLUNTEER)
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
 
         User savedUser = userRepository.save(user);
-        log.info("Користувач {} успішно зареєстрований", savedUser.getUsername());
+        log.info("User registered successfully with ID: {}", savedUser.getId());
 
         return userMapper.toResponse(savedUser);
     }
 
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public Optional<User> findByKeycloakId(String keycloakId) {
+        return userRepository.findByKeycloakId(keycloakId);
+    }
+
     @Transactional
-    public UserResponse syncKeycloakUser(String keycloakId, String username, String email) {
-        log.info("Синхронізація користувача з Keycloak ID: {}", keycloakId);
-
-        User user = userRepository.findByKeycloakId(keycloakId).orElse(null);
-
-        if (user == null) {
-            // Створення нового користувача якщо він не існує
-            user = User.builder()
-                    .keycloakId(keycloakId)
-                    .username(username)
-                    .email(email)
-                    .password(passwordEncoder.encode("temp-password")) // тимчасовий пароль
-                    .isActive(true)
-                    .build();
-        } else {
-            // Оновлення існуючих даних
-            user.setUsername(username);
-            user.setEmail(email);
-            user.setLastLogin(LocalDateTime.now());
-        }
-
-        User savedUser = userRepository.save(user);
-        return userMapper.toResponse(savedUser);
+    public void updateLastLogin(Long userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setLastLoginAt(LocalDateTime.now());
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+        });
     }
 
-    public String generateToken(String keycloakId) {
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> BusinessException.notFound("Користувача не знайдено"));
-
-        return jwtService.generateToken(keycloakId, user.getUsername(), user.getEmail());
-    }
-
-    private String createKeycloakUser(UserRegistrationRequest request) {
-        try (Keycloak keycloak = KeycloakBuilder.builder()
-                .serverUrl(keycloakServerUrl)
-                .realm("master")
-                .username(adminUsername)
-                .password(adminPassword)
-                .clientId("admin-cli")
-                .build()) {
-
-            // Створення користувача в Keycloak
-            UserRepresentation user = new UserRepresentation();
-            user.setUsername(request.getUsername());
-            user.setEmail(request.getEmail());
-            user.setFirstName(request.getFirstName());
-            user.setLastName(request.getLastName());
-            user.setEnabled(true);
-            user.setEmailVerified(true);
-
-            // Встановлення пароля
-            CredentialRepresentation credential = new CredentialRepresentation();
-            credential.setType(CredentialRepresentation.PASSWORD);
-            credential.setValue(request.getPassword());
-            credential.setTemporary(false);
-            user.setCredentials(Collections.singletonList(credential));
-
-            // Створення користувача
-            try {
-                keycloak.realm(realm).users().create(user);
-                
-                // Отримання ID створеного користувача через пошук
-                var users = keycloak.realm(realm).users().searchByUsername(request.getUsername(), true);
-                if (!users.isEmpty()) {
-                    return users.get(0).getId();
-                } else {
-                    throw new RuntimeException("Користувача створено, але не вдалося знайти його ID");
-                }
-            } catch (Exception e) {
-                log.error("Помилка при створенні користувача в Keycloak: {}", e.getMessage());
-                throw new RuntimeException("Помилка створення користувача в Keycloak: " + e.getMessage());
-            }
-
-        } catch (Exception e) {
-            log.error("Помилка при створенні користувача в Keycloak", e);
-            throw BusinessException.badRequest("Помилка при створенні користувача в системі авторизації");
-        }
+    @Transactional
+    public void deactivateUser(Long userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setIsActive(false);
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+        });
     }
 }

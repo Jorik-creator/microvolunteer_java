@@ -30,4 +30,13 @@ public class TaskSearchRequest {
     
     @Builder.Default
     private Integer size = 12;
+    
+    // Додаємо getter методи з валідацією
+    public Integer getPage() {
+        return page != null && page >= 0 ? page : 0;
+    }
+    
+    public Integer getSize() {
+        return size != null && size > 0 ? size : 12;
+    }
 }

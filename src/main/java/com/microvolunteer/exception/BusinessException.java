@@ -9,6 +9,11 @@ public class BusinessException extends RuntimeException {
     private final HttpStatus status;
     private final String code;
 
+    // Додано простий конструктор
+    public BusinessException(String message) {
+        this(message, HttpStatus.BAD_REQUEST, "BUSINESS_ERROR");
+    }
+
     public BusinessException(String message, HttpStatus status, String code) {
         super(message);
         this.status = status;

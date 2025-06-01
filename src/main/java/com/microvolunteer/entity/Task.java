@@ -2,90 +2,74 @@ package com.microvolunteer.entity;
 
 import com.microvolunteer.enums.TaskStatus;
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 @Entity
 @Table(name = "tasks")
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Task {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 255)
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @Column(name = "location", length = 255)
+    private String location;
 
+    @Column(name = "required_skills", columnDefinition = "TEXT")
+    private String requiredSkills;
+
+    @Column(name = "max_participants")
+    private Integer maxParticipants;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private TaskStatus status;
+
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // Relationships
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
     private User creator;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Participation> participations;
 
-    @Column(nullable = false, length = 255)
-    private String location;
-
-    @Column(name = "start_date", nullable = false)
-    private LocalDateTime startDate;
-
-    @Column(name = "end_date")
-    private LocalDateTime endDate;
-
-    @Column(name = "deadline")
-    private LocalDateTime deadline;
-
-    @Column(name = "duration")
-    private Integer duration;
-
-    @Column(name = "max_volunteers")
-    @Builder.Default
-    private Integer maxVolunteers = 1;
-
-    @Column(name = "current_volunteers")
-    @Builder.Default
-    private Integer currentVolunteers = 0;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    @Builder.Default
-    private TaskStatus status = TaskStatus.OPEN;
-
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private Set<TaskImage> images = new HashSet<>();
-
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL)
-    @Builder.Default
-    private Set<Participation> participants = new HashSet<>();
-
-    public boolean isPastDue() {
-        return deadline != null && LocalDateTime.now().isAfter(deadline);
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    public int getAvailableSpots() {
-        return Math.max(0, maxVolunteers - currentVolunteers);
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

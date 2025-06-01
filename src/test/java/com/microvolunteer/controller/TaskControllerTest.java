@@ -1,114 +1,132 @@
 package com.microvolunteer.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.microvolunteer.dto.request.TaskCreateRequest;
-import com.microvolunteer.dto.response.TaskResponse;
+import com.microvolunteer.entity.Task;
 import com.microvolunteer.enums.TaskStatus;
 import com.microvolunteer.service.TaskService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(TaskController.class)
+@ActiveProfiles("test")
 class TaskControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockBean
     private TaskService taskService;
 
-    private TaskCreateRequest createRequest;
-    private TaskResponse taskResponse;
+    @MockBean
+    private com.microvolunteer.service.JwtService jwtService;
 
-    @BeforeEach
-    void setUp() {
-        createRequest = TaskCreateRequest.builder()
-                .title("Потрібна допомога з покупками")
-                .description("Допоможіть купити продукти")
-                .categoryId(1L)
-                .location("Київ")
-                .startDate(LocalDateTime.now().plusDays(1))
-                //.maxParticipants(1)
-                .build();
+    @Test
+    void getAllTasks_ShouldReturnTasksList() throws Exception {
+        // Given
+        Task task = createTestTask();
+        when(taskService.getAllTasks()).thenReturn(List.of(task));
 
-        taskResponse = TaskResponse.builder()
-                .id(1L)
-                .title("Потрібна допомога з покупками")
-                .status(TaskStatus.OPEN.name())
-                .maxVolunteers(1)
-                .currentVolunteers(0)
-                .availableSpots(1)
-                .build();
+        // When & Then
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].title").value("Test Task"));
     }
 
     @Test
-    @WithMockUser
-    void createTask_Success() throws Exception {
+    void getTaskById_WhenTaskExists_ShouldReturnTask() throws Exception {
         // Given
-        when(taskService.createTask(anyString(), any(TaskCreateRequest.class))).thenReturn(taskResponse);
+        Long taskId = 1L;
+        Task task = createTestTask();
+        when(taskService.getTaskById(taskId)).thenReturn(Optional.of(task));
 
         // When & Then
-        mockMvc.perform(post("/api/tasks")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.title").value("Потрібна допомога з покупками"));
-    }
-
-    @Test
-    void getTaskById_Success() throws Exception {
-        // Given
-        when(taskService.getTaskById(eq(1L), anyString())).thenReturn(taskResponse);
-
-        // When & Then
-        mockMvc.perform(get("/api/tasks/1"))
+        mockMvc.perform(get("/api/tasks/{id}", taskId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.title").value("Потрібна допомога з покупками"));
+                .andExpect(jsonPath("$.title").value("Test Task"));
     }
 
     @Test
-    void getRecentTasks_Success() throws Exception {
+    void getTaskById_WhenTaskDoesNotExist_ShouldReturn404() throws Exception {
         // Given
-        List<TaskResponse> tasks = Arrays.asList(taskResponse);
-        when(taskService.getRecentTasks()).thenReturn(tasks);
+        Long taskId = 1L;
+        when(taskService.getTaskById(taskId)).thenReturn(Optional.empty());
 
         // When & Then
-        mockMvc.perform(get("/api/tasks/recent"))
+        mockMvc.perform(get("/api/tasks/{id}", taskId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getTasksByStatus_ShouldReturnFilteredTasks() throws Exception {
+        // Given
+        Task task = createTestTask();
+        Page<Task> taskPage = new PageImpl<>(List.of(task));
+        when(taskService.getTasksByStatus(eq(TaskStatus.OPEN), any(PageRequest.class)))
+                .thenReturn(taskPage);
+
+        // When & Then
+        mockMvc.perform(get("/api/tasks/status/{status}", TaskStatus.OPEN))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].status").value("OPEN"));
+    }
+
+    @Test
+    void getTasksByCategory_ShouldReturnTasksFromCategory() throws Exception {
+        // Given
+        Long categoryId = 1L;
+        Task task = createTestTask();
+        when(taskService.getTasksByCategory(categoryId)).thenReturn(List.of(task));
+
+        // When & Then
+        mockMvc.perform(get("/api/tasks/category/{categoryId}", categoryId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].id").value(1));
     }
 
     @Test
-    @WithMockUser
-    void joinTask_Success() throws Exception {
+    void getTasksByCreator_ShouldReturnTasksFromCreator() throws Exception {
         // Given
-        when(taskService.joinTask(anyString(), eq(1L))).thenReturn(taskResponse);
+        Long creatorId = 1L;
+        Task task = createTestTask();
+        when(taskService.getTasksByCreator(creatorId)).thenReturn(List.of(task));
 
         // When & Then
-        mockMvc.perform(post("/api/tasks/1/join"))
+        mockMvc.perform(get("/api/tasks/creator/{creatorId}", creatorId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1));
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").value(1));
+    }
+
+    private Task createTestTask() {
+        return Task.builder()
+                .id(1L)
+                .title("Test Task")
+                .description("Test Description")
+                .status(TaskStatus.OPEN)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 }
