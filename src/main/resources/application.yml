@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: microvolunteer
+  
+  profiles:
+    active: dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/microvolunteer
+    username: microvolunteer_user
+    password: microvolunteer_pass
+    driver-class-name: org.postgresql.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+    
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/microvolunteer
+          jwk-set-uri: http://localhost:8080/realms/microvolunteer/protocol/openid-connect/certs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+server:
+  port: 8081
+  error:
+    include-message: always
+    include-binding-errors: always
+
+logging:
+  level:
+    com.microvolunteer: INFO
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+  file:
+    name: logs/microvolunteer.log
+
+# Application specific properties
+app:
+  keycloak:
+    auth-server-url: http://localhost:8080
+    realm: microvolunteer
+    client-id: microvolunteer-app
+    client-secret: your-client-secret
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    oauth:
+      clientId: microvolunteer-app
+      realm: microvolunteer
+      appName: MicroVolunteer
+      scopeSeparator: " "
+      additionalQueryStringParams: 
+        audience: microvolunteer-api
