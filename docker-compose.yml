@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: microvolunteer-postgres
     environment:
       POSTGRES_DB: microvolunteer
@@ -30,11 +28,11 @@ services:
     container_name: microvolunteer-keycloak
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak_user
-      KC_DB_PASSWORD: keycloak_pass
+      KC_DB_URL: jdbc:postgresql://postgres:5432/microvolunteer
+      KC_DB_USERNAME: microvolunteer_user
+      KC_DB_PASSWORD: microvolunteer_pass
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
