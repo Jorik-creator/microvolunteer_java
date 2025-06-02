@@ -12,6 +12,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 
 import java.util.Collection;
 import java.util.List;
@@ -32,46 +34,45 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/error").permitAll()
-                
-                // Admin only endpoints
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
-                // User registration - authenticated users only
-                .requestMatchers("/api/users/register").authenticated()
-                
-                // Task creation - only sensitive users
-                .requestMatchers("POST", "/api/tasks").hasRole("SENSITIVE")
-                
-                // Task completion - only sensitive users
-                .requestMatchers("PATCH", "/api/tasks/*/complete").hasRole("SENSITIVE")
-                
-                // Task participation - only volunteers
-                .requestMatchers("POST", "/api/tasks/*/participate").hasRole("VOLUNTEER")
-                .requestMatchers("DELETE", "/api/tasks/*/participate").hasRole("VOLUNTEER")
-                
-                // Category management - admin only
-                .requestMatchers("POST", "/api/categories").hasRole("ADMIN")
-                .requestMatchers("PUT", "/api/categories/*").hasRole("ADMIN")
-                .requestMatchers("DELETE", "/api/categories/*").hasRole("ADMIN")
-                
-                // All other requests require authentication
-                .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt
-                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                // 1️⃣ – Stateless API; сесію не створюємо
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-            );
-        
+
+                // 2️⃣ – CSRF не потрібен для чистого REST (за потреби заберіть disable)
+                .csrf(csrf -> csrf.disable())
+
+                // 4️⃣ – Авторизація за маршрутами
+                .authorizeHttpRequests(authorize -> authorize
+
+                        // ▸ Swagger-UI, OpenAPI, Actuator
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/actuator/health"
+                        ).permitAll()
+
+                        // ▸ Публичні ресурси (якщо є)
+                        // .requestMatchers("/public/**").permitAll()
+
+                        // ▸ Завдання: лише для ADMIN
+                        .requestMatchers(HttpMethod.GET,    "/api/tasks/**").hasAnyRole("ADMIN", "VOLUNTEER")
+                        .requestMatchers(HttpMethod.POST,   "/api/tasks").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH,  "/api/tasks/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/tasks/**").hasRole("ADMIN")
+
+                        // ▸ Будь-що інше — тільки з валідним токеном
+                        .anyRequest().authenticated()
+                )
+
+                // 5️⃣ – Ресурс-сервер: приймаємо та перевіряємо JWT від Keycloak
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(Customizer.withDefaults())
+                );
+
         return http.build();
     }
     

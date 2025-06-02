@@ -33,7 +33,6 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8080/realms/microvolunteer
-          jwk-set-uri: http://localhost:8080/realms/microvolunteer/protocol/openid-connect/certs
 
 management:
   endpoint:
