@@ -36,13 +36,9 @@ spring:
           jwk-set-uri: http://localhost:8080/realms/microvolunteer/protocol/openid-connect/certs
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
   endpoint:
     health:
-      show-details: when-authorized
+      enabled: false
 
 server:
   port: 8081
@@ -73,7 +69,7 @@ springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
-    path: /swagger-ui.html
+    path: /swagger-ui
     operationsSorter: method
     tagsSorter: alpha
     tryItOutEnabled: true
