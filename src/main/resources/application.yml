@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: micro-volunteering
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/micro_volunteering
+    username: ${DB_USERNAME:micro_volunteering}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${HIBERNATE_DDL_AUTO:update}
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: ${FORMAT_SQL:false}
+  
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    enabled: ${LIQUIBASE_ENABLED:true}
+  
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-for-coursework-only-do-not-use-in-production-123456789}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+
+logging:
+  level:
+    root: INFO
+    org.example: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    try-it-out-enabled: true
+    filter: true
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,mappings
+  endpoint:
+    health:
+      show-details: when-authorized
+
+app:
+  data:
+    init: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  
+  h2:
+    console:
+      enabled: true
+  
+  liquibase:
+    enabled: false
+  
+  sql:
+    init:
+      mode: never
+
+jwt:
+  secret: ${JWT_SECRET:test-secret-key-for-coursework-testing-only-123456789}
+  expiration: 86400000
+
+app:
+  data:
+    init: false

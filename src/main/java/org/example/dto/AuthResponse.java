@@ -1,0 +1,24 @@
+package org.example.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthResponse {
+    
+    private String token;
+    private String type = "Bearer";
+    private String username;
+    private String email;
+    private String userType;
+    
+    public AuthResponse(String token, String username, String email, String userType) {
+        this.token = token;
+        this.username = username;
+        this.email = email;
+        this.userType = userType;
+    }
+}

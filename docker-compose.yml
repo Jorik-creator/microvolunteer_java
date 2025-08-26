@@ -1,0 +1,56 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17.5-alpine
+    container_name: micro-volunteering-db
+    environment:
+      POSTGRES_DB: micro_volunteering
+      POSTGRES_USER: micro_volunteering
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - micro-volunteering-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U micro_volunteering -d micro_volunteering"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Spring Boot Application
+  app:
+    build: .
+    container_name: micro-volunteering-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: micro_volunteering
+      DB_USERNAME: micro_volunteering
+      DB_PASSWORD: password
+      JWT_SECRET: myDockerSecretKey123456789012345678901234567890123456789012345678
+      JWT_EXPIRATION: 86400000
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - micro-volunteering-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  micro-volunteering-network:
+    driver: bridge

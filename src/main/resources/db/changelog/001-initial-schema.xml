@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
+
+    <changeSet id="001-create-tables" author="developer">
+        
+        <!-- Users table -->
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="password" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="first_name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="phone" type="VARCHAR(20)"/>
+            <column name="bio" type="TEXT"/>
+            <column name="address" type="TEXT"/>
+            <column name="profile_image_url" type="VARCHAR(500)"/>
+            <column name="date_joined" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Categories table -->
+        <createTable tableName="categories">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Tasks table -->
+        <createTable tableName="tasks">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_date" type="TIMESTAMP"/>
+            <column name="max_participants" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP"/>
+            <column name="creator_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Task Images table -->
+        <createTable tableName="task_images">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="image_url" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="upload_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Participations table -->
+        <createTable tableName="participations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="joined_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="feedback" type="TEXT"/>
+            <column name="task_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Task Participants table (Many-to-Many) -->
+        <createTable tableName="task_participants">
+            <column name="task_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint baseTableName="tasks" baseColumnNames="creator_id"
+                                 constraintName="fk_tasks_creator_id"
+                                 referencedTableName="users" referencedColumnNames="id"/>
+                                 
+        <addForeignKeyConstraint baseTableName="tasks" baseColumnNames="category_id"
+                                 constraintName="fk_tasks_category_id"
+                                 referencedTableName="categories" referencedColumnNames="id"/>
+                                 
+        <addForeignKeyConstraint baseTableName="task_images" baseColumnNames="task_id"
+                                 constraintName="fk_task_images_task_id"
+                                 referencedTableName="tasks" referencedColumnNames="id"/>
+                                 
+        <addForeignKeyConstraint baseTableName="participations" baseColumnNames="task_id"
+                                 constraintName="fk_participations_task_id"
+                                 referencedTableName="tasks" referencedColumnNames="id"/>
+                                 
+        <addForeignKeyConstraint baseTableName="participations" baseColumnNames="user_id"
+                                 constraintName="fk_participations_user_id"
+                                 referencedTableName="users" referencedColumnNames="id"/>
+                                 
+        <addForeignKeyConstraint baseTableName="task_participants" baseColumnNames="task_id"
+                                 constraintName="fk_task_participants_task_id"
+                                 referencedTableName="tasks" referencedColumnNames="id"/>
+                                 
+        <addForeignKeyConstraint baseTableName="task_participants" baseColumnNames="user_id"
+                                 constraintName="fk_task_participants_user_id"
+                                 referencedTableName="users" referencedColumnNames="id"/>
+                                 
+        <!-- Primary key for junction table -->
+        <addPrimaryKey tableName="task_participants" 
+                       columnNames="task_id, user_id" 
+                       constraintName="pk_task_participants"/>
+        
+    </changeSet>
+    
+</databaseChangeLog>
